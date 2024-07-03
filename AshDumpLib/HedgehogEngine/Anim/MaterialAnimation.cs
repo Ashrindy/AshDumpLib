@@ -1,22 +1,20 @@
 ﻿using Amicitia.IO.Binary;
-using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine.Anim;
 
-//Research from Kwasior!
-
-public class CameraAnimation : IBinarySerializable
+public class MaterialAnimation : IBinarySerializable
 {
-    public const string FileExtension = ".cam-anim";
+    public const string FileExtension = ".mat-anim";
 
-    public List<Camera> Cameras = new();
+    public string MaterialName = "";
+    public List<Material> Materials = new();
 
 
-    public CameraAnimation() { }
+    public MaterialAnimation() { }
 
-    public CameraAnimation(string filename)
+    public MaterialAnimation(string filename)
     {
-        Open(filename);
+        Open(filename);   
     }
 
     public void Open(string filename)
@@ -26,14 +24,14 @@ public class CameraAnimation : IBinarySerializable
 
     public void Save(string filename)
     {
-        Write(new(filename, Endianness.Big, System.Text.Encoding.Default));
+        Write(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
     }
 
     public void Read(BinaryObjectReader reader)
     {
         uint StringTableOffset = 0;
         reader.Seek(0x18, SeekOrigin.Begin);
-        var camerasPointer = reader.Read<uint>();
+        var matsPointer = reader.Read<uint>();
         reader.Skip(4);
         var keyframesPointer = reader.Read<uint>();
         var keyframesSize = reader.Read<uint>();
@@ -50,13 +48,14 @@ public class CameraAnimation : IBinarySerializable
             keyframes.Add(keyframe);
         }
 
-        reader.Seek(0x18 + camerasPointer, SeekOrigin.Begin);
-        var cameraCount = reader.Read<int>();
-        for (int i = 0; i < cameraCount; i++)
+        reader.Seek(0x18 + matsPointer, SeekOrigin.Begin);
+        MaterialName = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
+        var matsCount = reader.Read<int>();
+        for (int i = 0; i < matsCount; i++)
         {
-            var camera = new Camera();
-            camera.Read(reader, StringTableOffset, keyframes);
-            Cameras.Add(camera);
+            var mat = new Material();
+            mat.Read(reader, StringTableOffset, keyframes);
+            Materials.Add(mat);
         }
 
         reader.Dispose();
@@ -89,35 +88,46 @@ public class CameraAnimation : IBinarySerializable
         writer.Write(0);
 
         writer.Write(24);
-        int animCameraSize;
+        int animMatSize;
         writer.Seek(0x30, SeekOrigin.Begin);
-        writer.Write(Cameras.Count);
-        writer.Skip(4 * Cameras.Count);
-        List<long> camPtrs = new List<long>();
-
-        foreach (var camera in Cameras)
+        int stringOffset = 0;
+        foreach (var str in strings)
         {
-            camPtrs.Add(writer.Position - 0x18);
-            camera.Write(writer, strings, keys);
+            stringOffset++;
+        }
+        writer.Write(stringOffset);
+        foreach (var c in MaterialName)
+        {
+            strings.Add(c);
+        }
+        strings.Add('\0');
+        writer.Write(Materials.Count);
+        writer.Skip(4 * Materials.Count);
+        List<long> matPtrs = new List<long>();
+
+        foreach (var mat in Materials)
+        {
+            matPtrs.Add(writer.Position - 0x18);
+            mat.Write(writer, strings, keys);
         }
 
-        animCameraSize = (int)writer.Position - 0x30;
+        animMatSize = (int)writer.Position - 0x30;
 
-        writer.Seek(0x34, SeekOrigin.Begin);
+        writer.Seek(0x38, SeekOrigin.Begin);
 
-        foreach (var ptr in camPtrs)
+        foreach (var ptr in matPtrs)
         {
-            offsets.Add((int)writer.Position - 0x18 - 4);
+            offsets.Add((int)writer.Position - 0x18);
             writer.Write((int)ptr);
         }
 
         writer.Seek(0x1c, SeekOrigin.Begin);
-        writer.Write(animCameraSize);
+        writer.Write(animMatSize);
 
-        writer.Write(animCameraSize + 0x30 - 0x18);
+        writer.Write(animMatSize + 0x30 - 0x18);
         writer.Write(keys.Count * 8);
 
-        writer.Seek(animCameraSize + 0x30, SeekOrigin.Begin);
+        writer.Seek(animMatSize + 0x30, SeekOrigin.Begin);
         foreach (var key in keys)
         {
             writer.Write(key.Frame);
@@ -170,22 +180,13 @@ public class CameraAnimation : IBinarySerializable
     }
 }
 
-public class Camera
+public class Material
 {
     public string Name = "";
-    public bool RotationOrAim = true;
     public float FPS = 30;
     public float FrameStart = 0;
     public float FrameEnd = 0;
-    public Vector3 Position = new(0, 0, 0);
-    public Vector3 Rotation = new(0, 0, 0);
-    public Vector3 AimPosition = new(0, 0, 0);
-    public float Twist = 0;
-    public float ZNear = 0.001f;
-    public float ZFar = 1000f;
-    public float FOV = 0;
-    public float AspectRatio = 1.77779f;
-    public List<CamFrameInfo> FrameInfos = new();
+    public List<MaterialFrameInfo> FrameInfos = new();
 
     public void Read(BinaryObjectReader reader, uint StringTableOffset, List<Keyframe> keyframes)
     {
@@ -193,51 +194,22 @@ public class Camera
         var prePos = reader.Position;
         reader.Seek(pointer + 0x18, SeekOrigin.Begin);
         Name = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
-        RotationOrAim = reader.Read<byte>() == 1;
-        reader.Skip(3);
         FPS = reader.Read<float>();
         FrameStart = reader.Read<float>();
         FrameEnd = reader.Read<float>();
         var FrameInfoCount = reader.Read<int>();
-        Vector3 posTemp = new Vector3();
-        posTemp.X = reader.Read<float>();
-        posTemp.Z = reader.Read<float>();
-        posTemp.Y = reader.Read<float>();
-        Position = posTemp;
-        Vector3 rotTemp = new Vector3();
-        rotTemp.X = reader.Read<float>();
-        rotTemp.Z = reader.Read<float>();
-        rotTemp.Y = reader.Read<float>();
-        Rotation = rotTemp;
-        Vector3 aimPosTemp = new Vector3();
-        aimPosTemp.X = reader.Read<float>();
-        aimPosTemp.Z = reader.Read<float>();
-        aimPosTemp.Y = reader.Read<float>();
-        AimPosition = aimPosTemp;
-        Twist = reader.Read<float>();
-        ZNear = reader.Read<float>();
-        ZFar = reader.Read<float>();
-        FOV = reader.Read<float>();
-        AspectRatio = reader.Read<float>();
-        FOV = (float)(2 * Math.Atan(Math.Tan(FOV / 2) * AspectRatio));
         for (int i = 0; i < FrameInfoCount; i++)
         {
-            var frameInfo = new CamFrameInfo();
-            CamFrameType type = (CamFrameType)reader.Read<byte>();
-            frameInfo.Type = type;
-            reader.Skip(3);
+            var frameInfo = new MaterialFrameInfo();
+            frameInfo.InputID = reader.Read<byte>();
+            frameInfo.Flag = reader.Read<byte>();
+            reader.Skip(2);
             frameInfo.KeyFrames = new List<Keyframe>();
             var length = reader.Read<int>();
             var indexStart = reader.Read<int>();
             for (int j = indexStart; j < length + indexStart; j++)
             {
-                var keyframe = keyframes[j];
-                if (type == CamFrameType.FOV)
-                {
-                    //Thanks ik-01 for allowing me to use this formula!
-                    keyframe.Value = (float)(2 * Math.Atan(Math.Tan(keyframe.Value / 2) * AspectRatio));
-                }
-                frameInfo.KeyFrames.Add(keyframe);
+                frameInfo.KeyFrames.Add(keyframes[j]);
             }
             FrameInfos.Add(frameInfo);
         }
@@ -257,54 +229,35 @@ public class Camera
             strings.Add(c);
         }
         strings.Add('\0');
-        if (RotationOrAim) { writer.Write<byte>(1); } else { writer.Write<byte>(0); }
-        writer.Skip(3);
         writer.Write(FPS);
         writer.Write(FrameStart);
         writer.Write(FrameEnd);
         writer.Write(FrameInfos.Count);
-        writer.Write(Position.X);
-        writer.Write(Position.Z);
-        writer.Write(Position.Y);
-        writer.Write(Rotation.X);
-        writer.Write(Rotation.Y);
-        writer.Write(Rotation.Z);
-        writer.Write(AimPosition.X);
-        writer.Write(AimPosition.Z);
-        writer.Write(AimPosition.Y);
-        writer.Write(Twist);
-        writer.Write(ZNear);
-        writer.Write(ZFar);
-        writer.Write((float)(2 * Math.Atan(Math.Tan(FOV / 2) / AspectRatio)));
-        writer.Write(AspectRatio);
 
         foreach (var frameInfo in FrameInfos)
         {
-            writer.Write((byte)frameInfo.Type);
-            writer.Skip(3);
+            writer.Write((byte)frameInfo.InputID);
+            writer.Write((byte)frameInfo.Flag);
+            writer.Skip(2);
             writer.Write(frameInfo.KeyFrames.Count);
             writer.Write(keyframes.Count);
 
             foreach (var keyFrame in frameInfo.KeyFrames)
             {
-                var keyframe = keyFrame;
-                if (frameInfo.Type == CamFrameType.FOV)
-                {
-                    keyframe.Value = (float)(2 * Math.Atan(Math.Tan(keyframe.Value / 2) / AspectRatio));
-                }
-                keyframes.Add(keyframe);
+                keyframes.Add(keyFrame);
             }
         }
     }
 }
 
-public class CamFrameInfo
+public struct MaterialFrameInfo
 {
-    public CamFrameType Type;
-    public List<Keyframe> KeyFrames = new List<Keyframe>();
+    public int InputID;
+    public int Flag;
+    public List<Keyframe> KeyFrames;
 }
 
-public enum CamFrameType
+public enum MatType
 {
-    PositionX = 0, PositionY = 1, PositionZ = 2, RotationX = 3, RotationY = 4, RotationZ = 5, AimPositionX = 6, AimPositionY = 7, AimPositionZ = 8, Twist = 9, ZNear = 10, ZFar = 11, FOV = 12, AspectRatio = 13
+    I1X = 0, I1Y, I1Z, I1W, I2X, I2Y, I2Z, I2W, I3X, I3Y, I3Z, I3W, I4X, I4Y, I4Z, I4W, I5X, I5Y, I5Z, I5W, I6X, I6Y, I6Z, I6W, I7X, I7Y, I7Z, I7W, I8X, I8Y, I8Z, I8W, I9X, I9Y, I9Z, I9W, I10X, I10Y, I10Z, I10W, I11X, I11Y, I11Z, I11W, I12X, I12Y, I12Z, I12W
 }
