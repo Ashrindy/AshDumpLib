@@ -1,6 +1,4 @@
-﻿using Amicitia.IO.Binary;
-
-namespace AshDumpLib.HedgehogEngine;
+﻿namespace AshDumpLib.HedgehogEngine;
 
 public static class Helpers
 {

@@ -2,7 +2,7 @@
 
 namespace AshDumpLib.HedgehogEngine.Anim;
 
-//Research from Kwasior!
+//Research by Kwasior!
 
 public class UVAnimation
 {
