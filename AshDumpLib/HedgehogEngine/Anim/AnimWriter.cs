@@ -48,9 +48,7 @@ public class AnimWriter : ExtendedBinaryWriter
         //Writes the offset in the StringTable
         Write(StringTable.Count);
         foreach (var i in entry.ToCharArray())
-        {
             StringTable.Add(i);
-        }
         StringTable.Add('\0');
     }
 
@@ -65,14 +63,19 @@ public class AnimWriter : ExtendedBinaryWriter
 
     public override void WriteHeader()
     {
+        //We save the file size position with the offset system that the ExtendedBinaryWriter has
         AddOffset("fileSize", false);
 
+        //Writes the version which is different across the .*-anim files
         Write(Version);
 
+        //We save the data size position with the offset system that the ExtendedBinaryWriter has
         AddOffset("dataSize", false);
 
+        //We write the offset to the data block
         Write(GenericOffset);
 
+        //We save the offsets pointer position with the offset system that the ExtendedBinaryWriter has
         AddOffset("offsetsPointer", false);
 
         WriteNulls(4);
@@ -80,39 +83,59 @@ public class AnimWriter : ExtendedBinaryWriter
 
     public override void FinishWrite()
     {
+        //Sets the string table offset
         SetOffset("strings");
 
+        //Writes the string table
         foreach (var i in StringTable)
             WriteChar(i);
 
         FixPadding(4);
 
-        int dataSize = (int)Position - 24;
-        int stringSize = dataSize - (int)GetOffsetValue("strings");
+        //Gets string size by subtracting the current position from the string table pointer
+        int stringSize = ((int)Position - GenericOffset) - (int)GetOffsetValue("strings");
 
-        WriteAt(dataSize, GetOffset("dataSize"));
+        //Writes string size
         WriteAt(stringSize, GetOffset("strings") + 4);
 
+        //Gets data size by getting the position with the generic offset subtracted
+        int dataSize = (int)Position - GenericOffset;
+
+        //Writes data size
+        WriteAt(dataSize, GetOffset("dataSize"));
+
+        //Gets the offset pointer by getting the current position
         int offsetPointer = (int)Position;
+
+        //Writes offset pointer
         WriteAt(offsetPointer, GetOffset("offsetsPointer"));
 
+        //Saves the offset amount position
         AddOffset("offsetsCount", false);
 
+        //Writes some offsets that I have no idea where they come from
         for (int x = 0; x < 24; x += 4)
             Write(x);
 
+        //Writes offsets
         foreach(var i in Offsets)
             if (OffsetsWrite[i.Key])
+                //Sometimes the .*-anim files seem to address the issue that's been made by offseting the offsets by 4 for some reason
                 if(AnimationType == AnimType.UVAnimation || AnimationType == AnimType.VisibilityAnimation)
                     Write((int)i.Value - GenericOffset);
                 else
                     Write((int)i.Value - GenericOffset - 4);
 
+        //Gets the offset amount by subtracting the current position from the offset count position
         int offsetCount = ((int)Position - ((int)GetOffset("offsetsCount") + 4)) / 4;
+
+        //Writes offset amount
         WriteAt(offsetCount, GetOffset("offsetsCount"));
 
+        //Gets file size, by getting the current writer position
         int fileSize = (int)Position;
 
+        //Writes file size
         WriteAt(fileSize, GetOffset("fileSize"));
     }
 }

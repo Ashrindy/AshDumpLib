@@ -37,9 +37,7 @@ public class BINAReader : ExtendedBinaryReader
         //Reads the signature here and checks if it is the correct one. If it isn't, it will throw an exception
         string binaSignature = ReadString(StringBinaryFormat.FixedLength, 4);
         if(binaSignature != BINASignature) 
-        {
             throw new Exception("Not a BINA file!");
-        }
 
         //Now it reads the version, which is pretty much unneccessary right now
         string version = ReadString(StringBinaryFormat.FixedLength, 3);
@@ -47,17 +45,11 @@ public class BINAReader : ExtendedBinaryReader
         //We read the endianess byte, and set the endianess based on said byte. If it's an unknown byte, it will throw an exception
         byte endianess = Read<byte>();
         if(endianess == 'L')
-        {
             Endianness = Endianness.Little;
-        }
         else if (endianess == 'B')
-        {
             Endianness = Endianness.Big;
-        }
         else
-        {
             throw new Exception("Unknown endianess!");
-        }
 
         //Yet again, pretty much unneccessary, but it reads the FileSize and the DataBlockCount
         FileSize = Read<int>();
@@ -66,9 +58,7 @@ public class BINAReader : ExtendedBinaryReader
         //We check for the Data block signature. If it's incorrect, we throw an exception
         string blockSignature = ReadString(StringBinaryFormat.FixedLength, 4);
         if(blockSignature != BlockSignature)
-        {
             throw new Exception("Bad block signature!");
-        }
 
         //Again, very unneccessary, but we read it anyway
         BlockSize = Read<int>();
@@ -85,7 +75,8 @@ public class BINAReader : ExtendedBinaryReader
     {
         //Reads and checks for the signature. If it's wrong, it will throw an exception
         Signature = ReadString(StringBinaryFormat.FixedLength, 4);
-        if(signature != Signature) { throw new Exception("Wrong signature!"); }
+        if(signature != Signature) 
+            throw new Exception("Wrong signature!");
     }
 
     public override string ReadStringTableEntry()

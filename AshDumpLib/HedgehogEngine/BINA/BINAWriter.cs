@@ -50,18 +50,12 @@ public class BINAWriter : ExtendedBinaryWriter
 
         //Writes endianess
         if(Endianness == Endianness.Little)
-        {
             Write<byte>(76);
-        }
         else if(Endianness == Endianness.Big)
-        {
             Write<byte>(66);
-        }
         else
-        {
             //Errors out if endianess is broken
             throw new Exception("Unknown endianess!");
-        }
 
         //Writes a 0 and saves fileSizePos for later
         fileSizePos = Position;
@@ -119,9 +113,7 @@ public class BINAWriter : ExtendedBinaryWriter
         //We finally write the StringTableEntries
         Seek(stringTableOffset, SeekOrigin.Begin);
         foreach(var i in StringTable)
-        {
             WriteChar(i);
-        }
 
         FixPadding(4);
 
@@ -145,9 +137,7 @@ public class BINAWriter : ExtendedBinaryWriter
         {
             int x = ((int)i.Value - (int)lastOffsetPos) >> 2;
             if(x <= 63)
-            {
                 Write((byte)((byte)64 | x));
-            }
             lastOffsetPos = i.Value;
         }
 
