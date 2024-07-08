@@ -26,7 +26,7 @@ public class CameraAnimation
 
     public void Save(string filename)
     {
-        Write(new(filename, Endianness.Big, System.Text.Encoding.Default));
+        Write(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
     }
 
     public void Read(ExtendedBinaryReader reader)

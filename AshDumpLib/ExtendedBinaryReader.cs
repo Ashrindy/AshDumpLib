@@ -9,6 +9,7 @@ public class ExtendedBinaryReader : BinaryObjectReader
 {
     public int stringTableOffset = 0;
     public int genericOffset = 0;
+    public string Signature = "";
 
     public ExtendedBinaryReader(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
     {
@@ -20,6 +21,14 @@ public class ExtendedBinaryReader : BinaryObjectReader
 
     public ExtendedBinaryReader(Stream stream, StreamOwnership streamOwnership, Endianness endianness, Encoding encoding = null, string fileName = null, int blockSize = 1048576) : base(stream, streamOwnership, endianness, encoding, fileName, blockSize)
     {
+    }
+
+    public void ReadSignature(string signature)
+    {
+        //Reads and checks for the signature. If it's wrong, it will throw an exception
+        Signature = ReadString(StringBinaryFormat.FixedLength, 4);
+        if (signature != Signature)
+            throw new Exception("Wrong signature!");
     }
 
     public virtual void Jump(long offset, SeekOrigin origin)

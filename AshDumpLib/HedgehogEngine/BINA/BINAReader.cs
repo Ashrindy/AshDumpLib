@@ -18,8 +18,6 @@ public class BINAReader : ExtendedBinaryReader
     int stringTableSize;
     int offsetTableSize;
 
-    public string Signature;
-
     public BINAReader(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
     {
     }
@@ -69,14 +67,6 @@ public class BINAReader : ExtendedBinaryReader
         offsetTableSize = Read<int>();
         RelativeDataOffset = Read<int>();
         this.Skip(RelativeDataOffset);
-    }
-
-    public void ReadSignature(string signature)
-    {
-        //Reads and checks for the signature. If it's wrong, it will throw an exception
-        Signature = ReadString(StringBinaryFormat.FixedLength, 4);
-        if(signature != Signature) 
-            throw new Exception("Wrong signature!");
     }
 
     public override string ReadStringTableEntry()

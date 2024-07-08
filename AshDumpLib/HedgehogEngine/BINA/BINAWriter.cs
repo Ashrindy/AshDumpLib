@@ -83,12 +83,6 @@ public class BINAWriter : ExtendedBinaryWriter
         WriteNulls(RelativeDataOffset);
     }
 
-    public void WriteSignature(string signature)
-    {
-        //Writes BINA file's unique signature
-        WriteString(StringBinaryFormat.FixedLength, signature, 4);
-    }
-
     public override void FinishWrite()
     {
         //We save the current position as StringTableOffset here so we can quickly jump back and also write it in the BINA header

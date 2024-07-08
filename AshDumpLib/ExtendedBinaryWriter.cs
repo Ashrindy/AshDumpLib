@@ -61,6 +61,12 @@ namespace AshDumpLib
             Seek(prePos, SeekOrigin.Begin);
         }
 
+        public void WriteSignature(string signature)
+        {
+            //Writes file's unique signature
+            WriteString(StringBinaryFormat.FixedLength, signature, 4);
+        }
+
         public void WriteChar(char value)
         {
             Write(value);

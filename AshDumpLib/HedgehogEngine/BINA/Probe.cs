@@ -25,7 +25,7 @@ public class Probe
 
     public void Save(string filename)
     {
-        Write(new(filename, Endianness.Little, System.Text.Encoding.Default));
+        Write(new(filename, Endianness.Little, System.Text.Encoding.UTF8));
     }
 
     public void Read(BINAReader reader)
