@@ -4,7 +4,7 @@ namespace AshDumpLib.HedgehogEngine.Anim;
 
 //Research from Kwasior!
 
-public class UVAnimation : IBinarySerializable
+public class UVAnimation
 {
     public const string FileExtension = ".uv-anim";
 
@@ -30,19 +30,19 @@ public class UVAnimation : IBinarySerializable
         Write(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
     }
 
-    public void Read(BinaryObjectReader reader)
+    public void Read(ExtendedBinaryReader reader)
     {
-        uint StringTableOffset = 0;
-        reader.Seek(0x18, SeekOrigin.Begin);
+        reader.genericOffset = 0x18;
+        reader.Jump(0, SeekOrigin.Begin);
         var uvsPointer = reader.Read<uint>();
         reader.Skip(4);
-        var keyframesPointer = reader.Read<uint>();
-        var keyframesSize = reader.Read<uint>();
-        var stringPointer = reader.Read<uint>();
-        StringTableOffset = stringPointer + 0x18;
+        var keyframesPointer = reader.Read<int>();
+        var keyframesSize = reader.Read<int>();
+        var stringPointer = reader.Read<int>();
+        reader.stringTableOffset = stringPointer;
 
         List<Keyframe> keyframes = new List<Keyframe>();
-        reader.Seek(0x18 + keyframesPointer, SeekOrigin.Begin);
+        reader.Jump(keyframesPointer, SeekOrigin.Begin);
         for (int i = 0; i < keyframesSize / 8; i++)
         {
             var keyframe = new Keyframe();
@@ -51,145 +51,66 @@ public class UVAnimation : IBinarySerializable
             keyframes.Add(keyframe);
         }
 
-        reader.Seek(0x18 + uvsPointer, SeekOrigin.Begin);
-        MaterialName = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
-        TextureName = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
+        reader.Jump(uvsPointer, SeekOrigin.Begin);
+        MaterialName = reader.ReadStringTableEntry();
+        TextureName = reader.ReadStringTableEntry();
         var uvCount = reader.Read<int>();
         for (int i = 0; i < uvCount; i++)
         {
             var uv = new UV();
-            uv.Read(reader, StringTableOffset, keyframes);
+            uv.Read(reader, keyframes);
             UVs.Add(uv);
         }
 
         reader.Dispose();
     }
 
-    public void Write(BinaryObjectWriter writer)
+    public void Write(AnimWriter writer)
     {
-        int fileSize = 0;
-        int dataSize = 0;
-        int offsetPointer = 0;
+        writer.AnimationType = AnimWriter.AnimType.UVAnimation;
+        writer.Version = 3;
+        writer.WriteHeader();
+
         List<Keyframe> keys = new List<Keyframe>();
 
-        List<int> offsets = new List<int>
-        {
-            0,
-            4,
-            8,
-            12,
-            16,
-            20
-        };
+        writer.AddOffset("uvs", false);
+        long uvsSizePos = writer.Position;
+        writer.WriteNulls(4);
 
-        List<char> strings = new List<char>();
+        writer.AddOffset("keyframes", false);
+        long keyframesSizePos = writer.Position;
+        writer.WriteNulls(4);
 
-        writer.Write(fileSize);
-        writer.Write(3);
-        writer.Write(dataSize);
-        writer.Write(24);
-        writer.Write(offsetPointer);
-        writer.Write(0);
+        writer.AddOffset("strings", false);
+        writer.WriteNulls(4);
 
-        writer.Write(24);
-        int animUVSize;
-        writer.Seek(0x30, SeekOrigin.Begin);
-        int stringOffset = 0;
-        foreach (var str in strings)
-        {
-            stringOffset++;
-        }
-        writer.Write(stringOffset);
-        foreach (var c in MaterialName)
-        {
-            strings.Add(c);
-        }
-        strings.Add('\0');
-        stringOffset = 0;
-        foreach (var str in strings)
-        {
-            stringOffset++;
-        }
-        writer.Write(stringOffset);
-        foreach (var c in TextureName)
-        {
-            strings.Add(c);
-        }
-        strings.Add('\0');
+        writer.SetOffset("uvs");
+        writer.WriteStringTableEntry(MaterialName);
+        writer.WriteStringTableEntry(TextureName);
+        
         writer.Write(UVs.Count);
-        writer.Skip(4 * UVs.Count);
-        List<long> uvPtrs = new List<long>();
 
         foreach (var uv in UVs)
-        {
-            uvPtrs.Add(writer.Position - 0x18);
-            uv.Write(writer, strings, keys);
-        }
+            writer.AddOffset(uv.Name + "ptr");
 
-        animUVSize = (int)writer.Position - 0x30;
+        foreach (var uv in UVs)
+            uv.Write(writer, keys);
 
-        writer.Seek(0x3c, SeekOrigin.Begin);
+        int uvsSize = (int)(writer.Position - writer.GetOffsetValue("uvs")) - writer.GenericOffset;
+        writer.WriteAt(uvsSize, uvsSizePos);
 
-        foreach (var ptr in uvPtrs)
-        {
-            offsets.Add((int)writer.Position - 0x18);
-            writer.Write((int)ptr);
-        }
+        writer.SetOffset("keyframes");
 
-        writer.Seek(0x1c, SeekOrigin.Begin);
-        writer.Write(animUVSize);
-
-        writer.Write(animUVSize + 0x30 - 0x18);
-        writer.Write(keys.Count * 8);
-
-        writer.Seek(animUVSize + 0x30, SeekOrigin.Begin);
         foreach (var key in keys)
         {
             writer.Write(key.Frame);
             writer.Write(key.Value);
         }
 
-        int stringPtr = (int)writer.Position - 0x18;
+        int keyframesSize = (int)(writer.Position - writer.GetOffsetValue("keyframes")) - writer.GenericOffset;
+        writer.WriteAt(keyframesSize, keyframesSizePos);
 
-        writer.Seek(0x28, SeekOrigin.Begin);
-
-        writer.Write(stringPtr);
-
-        int stringSize = 0;
-        foreach (var str in strings)
-        {
-            stringSize++;
-        }
-
-        while (stringSize % 4 != 0)
-        {
-            stringSize++;
-        }
-
-        writer.Write(stringSize);
-
-        writer.Seek(stringPtr + 0x18, SeekOrigin.Begin);
-        writer.WriteString(StringBinaryFormat.FixedLength, new string(strings.ToArray()), stringSize);
-
-        dataSize = (int)writer.Position - 0x18;
-
-        writer.Write(offsets.Count);
-        foreach (var offset in offsets)
-        {
-            writer.Write(offset);
-        }
-
-        fileSize = (int)writer.Position;
-
-        writer.Seek(0, SeekOrigin.Begin);
-        writer.Write(fileSize);
-
-        writer.Seek(0x8, SeekOrigin.Begin);
-        writer.Write(dataSize);
-
-        writer.Seek(0x10, SeekOrigin.Begin);
-        writer.Write(dataSize + 0x18);
-
+        writer.FinishWrite();
 
         writer.Dispose();
     }
@@ -203,12 +124,12 @@ public class UV
     public float FrameEnd = 0;
     public List<UVFrameInfo> FrameInfos = new();
 
-    public void Read(BinaryObjectReader reader, uint StringTableOffset, List<Keyframe> keyframes)
+    public void Read(ExtendedBinaryReader reader, List<Keyframe> keyframes)
     {
         var pointer = reader.Read<uint>();
         var prePos = reader.Position;
-        reader.Seek(pointer + 0x18, SeekOrigin.Begin);
-        Name = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
+        reader.Jump(pointer, SeekOrigin.Begin);
+        Name = reader.ReadStringTableEntry();
         FPS = reader.Read<float>();
         FrameStart = reader.Read<float>();
         FrameEnd = reader.Read<float>();
@@ -232,19 +153,10 @@ public class UV
         reader.Seek(prePos, SeekOrigin.Begin);
     }
 
-    public void Write(BinaryObjectWriter writer, List<char> strings, List<Keyframe> keyframes)
+    public void Write(ExtendedBinaryWriter writer, List<Keyframe> keyframes)
     {
-        int stringOffset = 0;
-        foreach (var str in strings)
-        {
-            stringOffset++;
-        }
-        writer.Write(stringOffset);
-        foreach (var c in Name)
-        {
-            strings.Add(c);
-        }
-        strings.Add('\0');
+        writer.SetOffset(Name + "ptr");
+        writer.WriteStringTableEntry(Name);
         writer.Write(FPS);
         writer.Write(FrameStart);
         writer.Write(FrameEnd);

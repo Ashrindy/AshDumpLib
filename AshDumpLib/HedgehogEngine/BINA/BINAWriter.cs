@@ -3,13 +3,14 @@ using Amicitia.IO.Binary;
 using Amicitia.IO.Streams;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
-public class BINAWriter : BinaryObjectWriter
+public class BINAWriter : ExtendedBinaryWriter
 {
     public const string BINASignature = "BINA";
     public const string BINAVersion = "210";
@@ -23,37 +24,23 @@ public class BINAWriter : BinaryObjectWriter
     long stringTableSizePos = 28;
     long offsetTableSizePos = 32;
 
-    Dictionary<long, long> stringTableOffsets = new();
-    List<char> stringTable = new();
-    Dictionary<string, long> offsets = new();
-
     public BINAWriter(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
     {
+        GenericOffset = 64;
     }
 
     public BINAWriter(string filePath, FileStreamingMode fileStreamingMode, Endianness endianness, Encoding encoding, int bufferSize = 1048576) : base(filePath, fileStreamingMode, endianness, encoding, bufferSize)
     {
+        GenericOffset = 64;
     }
 
     public BINAWriter(Stream stream, StreamOwnership streamOwnership, Endianness endianness, Encoding encoding = null, string fileName = null, int blockSize = 1048576) : base(stream, streamOwnership, endianness, encoding, fileName, blockSize)
     {
+        GenericOffset = 64;
     }
 
-    public void WriteNulls(int amount)
-    {
-        for(int i = 0; i < amount; i++)
-        {
-            WriteChar('\0');
-        }
-    }
 
-    public void WriteChar(char value)
-    {
-        Write(value);
-        this.Skip(-1);
-    }
-
-    public void WriteHeader()
+    public override void WriteHeader()
     {
         //Writes BINA signature
         WriteString(StringBinaryFormat.FixedLength, BINASignature, 4);
@@ -113,50 +100,25 @@ public class BINAWriter : BinaryObjectWriter
         WriteString(StringBinaryFormat.FixedLength, signature, 4);
     }
 
-    public void WriteStringTableEntry(string entry)
-    {
-        //Adds offset to the OffsetTable
-        offsets.Add(entry, Position - 64);
-
-        //Adds offset to the StringTableOffset for later correction
-        stringTableOffsets.Add(Position, stringTable.Count);
-
-        //Writes the temporary offset in the StringTable
-        Write<long>(stringTable.Count);
-        foreach (var i in entry.ToCharArray())
-        {
-            stringTable.Add(i);
-        }
-        stringTable.Add('\0');
-    }
-
-    public void FixPadding(int padding)
-    {
-        int amount = 0;
-        while ((Position + amount) % padding != 0)
-            amount++;
-        WriteNulls(amount);
-    }
-
-    public void FinishWrite()
+    public override void FinishWrite()
     {
         //We save the current position as StringTableOffset here so we can quickly jump back and also write it in the BINA header
         int stringTableOffset = (int)Position;
 
         //Here we finally fix all the StringTableOffsets
-        foreach (var i in stringTableOffsets)
+        foreach (var i in StringTableOffsets)
         {
             Seek(i.Key, SeekOrigin.Begin);
-            Write(i.Value + stringTableOffset - 64);
+            Write(i.Value + stringTableOffset - GenericOffset);
         }
         
         //Now we write the StringTableOffset in the BINA header
         Seek(stringTableOffsetPos, SeekOrigin.Begin);
-        Write(stringTableOffset - 64);
+        Write(stringTableOffset - GenericOffset);
 
         //We finally write the StringTableEntries
         Seek(stringTableOffset, SeekOrigin.Begin);
-        foreach(var i in stringTable)
+        foreach(var i in StringTable)
         {
             WriteChar(i);
         }
@@ -179,7 +141,7 @@ public class BINAWriter : BinaryObjectWriter
         long lastOffsetPos = 0;
 
         //We loop through them, convert them into binary, and write them
-        foreach(var i in offsets)
+        foreach(var i in Offsets)
         {
             int x = ((int)i.Value - (int)lastOffsetPos) >> 2;
             if(x <= 63)
@@ -204,22 +166,11 @@ public class BINAWriter : BinaryObjectWriter
         Write(offsetTableSize);
     }
 
-    public void AddOffset(string id)
+    public override void AddOffset(string id, bool write = true)
     {
-        offsets.Add(id, Position - 64);
+        Offsets.Add(id, Position);
+        OffsetValues.Add(id, 0);
+        OffsetsWrite.Add(id, write);
         this.Skip(8);
-    }
-
-    public void SetOffset(string id)
-    {
-        long offset = Position - 64;
-        Jump(offsets[id], SeekOrigin.Begin);
-        Write(offset);
-        Jump(offset, SeekOrigin.Begin);
-    }
-
-    public void Jump(long offset, SeekOrigin origin)
-    {
-        Seek(offset + 64, origin);
     }
 }

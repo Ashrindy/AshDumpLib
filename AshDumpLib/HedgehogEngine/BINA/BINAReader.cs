@@ -5,7 +5,7 @@ using System.Text;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
-public class BINAReader : BinaryObjectReader
+public class BINAReader : ExtendedBinaryReader
 {
     public const string BINASignature = "BINA";
     public const string BINAVersion = "210";
@@ -88,29 +88,29 @@ public class BINAReader : BinaryObjectReader
         if(signature != Signature) { throw new Exception("Wrong signature!"); }
     }
 
-    public string ReadStringTableEntry()
+    public override string ReadStringTableEntry()
     {
-        //It reads the string table pointer
+        //Reads the string table pointer
         long pointer = Read<long>();
 
         //Saves the current position
         long prePos = Position;
 
         //Jumps to the pointer
-        this.Jump(pointer, SeekOrigin.Begin);
+        Jump(pointer, SeekOrigin.Begin);
 
         //Reads the string
         string value = ReadString(StringBinaryFormat.NullTerminated);
 
         //Jumps back
-        this.Seek(prePos, SeekOrigin.Begin);
+        Seek(prePos, SeekOrigin.Begin);
 
         //Returns the string
         return value;
     }
 
-    public void Jump(long offset, SeekOrigin origin)
+    public override void Jump(long offset, SeekOrigin origin)
     {
-        this.Seek(offset + 64, origin);
+        Seek(offset + 64, origin);
     }
 }

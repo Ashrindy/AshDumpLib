@@ -2,7 +2,7 @@
 
 namespace AshDumpLib.HedgehogEngine.Anim;
 
-public class VisibilityAnimation : IBinarySerializable
+public class VisibilityAnimation
 {
     public const string FileExtension = ".vis-anim";
 
@@ -28,19 +28,19 @@ public class VisibilityAnimation : IBinarySerializable
         Write(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
     }
 
-    public void Read(BinaryObjectReader reader)
+    public void Read(ExtendedBinaryReader reader)
     {
-        uint StringTableOffset = 0;
-        reader.Seek(0x18, SeekOrigin.Begin);
+        reader.genericOffset = 24;
+        reader.Jump(0, SeekOrigin.Begin);
         var vissPointer = reader.Read<uint>();
         reader.Skip(4);
-        var keyframesPointer = reader.Read<uint>();
-        var keyframesSize = reader.Read<uint>();
-        var stringPointer = reader.Read<uint>();
-        StringTableOffset = stringPointer + 0x18;
+        var keyframesPointer = reader.Read<int>();
+        var keyframesSize = reader.Read<int>();
+        var stringPointer = reader.Read<int>();
+        reader.stringTableOffset = stringPointer;
 
         List<Keyframe> keyframes = new List<Keyframe>();
-        reader.Seek(0x18 + keyframesPointer, SeekOrigin.Begin);
+        reader.Jump(keyframesPointer, SeekOrigin.Begin);
         for (int i = 0; i < keyframesSize / 8; i++)
         {
             var keyframe = new Keyframe();
@@ -49,145 +49,66 @@ public class VisibilityAnimation : IBinarySerializable
             keyframes.Add(keyframe);
         }
 
-        reader.Seek(0x18 + vissPointer, SeekOrigin.Begin);
-        SkeletonName = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
-        InputName = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
+        reader.Jump(vissPointer, SeekOrigin.Begin);
+        SkeletonName = reader.ReadStringTableEntry();
+        InputName = reader.ReadStringTableEntry();
         var visCount = reader.Read<int>();
         for (int i = 0; i < visCount; i++)
         {
             var vis = new Visibility();
-            vis.Read(reader, StringTableOffset, keyframes);
+            vis.Read(reader, keyframes);
             Visibilities.Add(vis);
         }
 
         reader.Dispose();
     }
 
-    public void Write(BinaryObjectWriter writer)
+    public void Write(AnimWriter writer)
     {
-        int fileSize = 0;
-        int dataSize = 0;
-        int offsetPointer = 0;
+        writer.AnimationType = AnimWriter.AnimType.VisibilityAnimation;
+        writer.Version = 1;
+        writer.WriteHeader();
+
         List<Keyframe> keys = new List<Keyframe>();
 
-        List<int> offsets = new List<int>
-        {
-            0,
-            4,
-            8,
-            12,
-            16,
-            20
-        };
+        writer.AddOffset("visibilities", false);
+        long visibilitySizePos = writer.Position;
+        writer.WriteNulls(4);
 
-        List<char> strings = new List<char>();
+        writer.AddOffset("keyframes", false);
+        long keyframesSizePos = writer.Position;
+        writer.WriteNulls(4);
 
-        writer.Write(fileSize);
-        writer.Write(3);
-        writer.Write(dataSize);
-        writer.Write(24);
-        writer.Write(offsetPointer);
-        writer.Write(0);
+        writer.AddOffset("strings", false);
+        writer.WriteNulls(4);
 
-        writer.Write(24);
-        int animVisSize;
-        writer.Seek(0x30, SeekOrigin.Begin);
-        int stringOffset = 0;
-        foreach (var str in strings)
-        {
-            stringOffset++;
-        }
-        writer.Write(stringOffset);
-        foreach (var c in SkeletonName)
-        {
-            strings.Add(c);
-        }
-        strings.Add('\0');
-        stringOffset = 0;
-        foreach (var str in strings)
-        {
-            stringOffset++;
-        }
-        writer.Write(stringOffset);
-        foreach (var c in InputName)
-        {
-            strings.Add(c);
-        }
-        strings.Add('\0');
+        writer.SetOffset("visibilities");
+
+        writer.WriteStringTableEntry(SkeletonName);
+        writer.WriteStringTableEntry(InputName);
         writer.Write(Visibilities.Count);
-        writer.Skip(4 * Visibilities.Count);
-        List<long> visPtrs = new List<long>();
 
         foreach (var vis in Visibilities)
-        {
-            visPtrs.Add(writer.Position - 0x18);
-            vis.Write(writer, strings, keys);
-        }
+            writer.AddOffset(vis.Name + "ptr");
 
-        animVisSize = (int)writer.Position - 0x30;
+        foreach (var vis in Visibilities)
+            vis.Write(writer, keys);
 
-        writer.Seek(0x3c, SeekOrigin.Begin);
+        int visibilitySize = (int)(writer.Position - writer.GetOffsetValue("visibilities")) - writer.GenericOffset;
+        writer.WriteAt(visibilitySize, visibilitySizePos);
 
-        foreach (var ptr in visPtrs)
-        {
-            offsets.Add((int)writer.Position - 0x18);
-            writer.Write((int)ptr);
-        }
+        writer.SetOffset("keyframes");
 
-        writer.Seek(0x1c, SeekOrigin.Begin);
-        writer.Write(animVisSize);
-
-        writer.Write(animVisSize + 0x30 - 0x18);
-        writer.Write(keys.Count * 8);
-
-        writer.Seek(animVisSize + 0x30, SeekOrigin.Begin);
         foreach (var key in keys)
         {
             writer.Write(key.Frame);
             writer.Write(key.Value);
         }
 
-        int stringPtr = (int)writer.Position - 0x18;
+        int keyframesSize = (int)(writer.Position - writer.GetOffsetValue("keyframes")) - writer.GenericOffset;
+        writer.WriteAt(keyframesSize, keyframesSizePos);
 
-        writer.Seek(0x28, SeekOrigin.Begin);
-
-        writer.Write(stringPtr);
-
-        int stringSize = 0;
-        foreach (var str in strings)
-        {
-            stringSize++;
-        }
-
-        while (stringSize % 4 != 0)
-        {
-            stringSize++;
-        }
-
-        writer.Write(stringSize);
-
-        writer.Seek(stringPtr + 0x18, SeekOrigin.Begin);
-        writer.WriteString(StringBinaryFormat.FixedLength, new string(strings.ToArray()), stringSize);
-
-        dataSize = (int)writer.Position - 0x18;
-
-        writer.Write(offsets.Count);
-        foreach (var offset in offsets)
-        {
-            writer.Write(offset);
-        }
-
-        fileSize = (int)writer.Position;
-
-        writer.Seek(0, SeekOrigin.Begin);
-        writer.Write(fileSize);
-
-        writer.Seek(0x8, SeekOrigin.Begin);
-        writer.Write(dataSize);
-
-        writer.Seek(0x10, SeekOrigin.Begin);
-        writer.Write(dataSize + 0x18);
-
+        writer.FinishWrite();
 
         writer.Dispose();
     }
@@ -201,12 +122,12 @@ public class Visibility
     public float FrameEnd = 0;
     public List<VisibilityFrameInfo> FrameInfos = new();
 
-    public void Read(BinaryObjectReader reader, uint StringTableOffset, List<Keyframe> keyframes)
+    public void Read(ExtendedBinaryReader reader, List<Keyframe> keyframes)
     {
         var pointer = reader.Read<uint>();
         var prePos = reader.Position;
-        reader.Seek(pointer + 0x18, SeekOrigin.Begin);
-        Name = Helpers.ReadStringTableEntry(reader, (int)StringTableOffset);
+        reader.Jump(pointer, SeekOrigin.Begin);
+        Name = reader.ReadStringTableEntry();
         FPS = reader.Read<float>();
         FrameStart = reader.Read<float>();
         FrameEnd = reader.Read<float>();
@@ -229,19 +150,10 @@ public class Visibility
         reader.Seek(prePos, SeekOrigin.Begin);
     }
 
-    public void Write(BinaryObjectWriter writer, List<char> strings, List<Keyframe> keyframes)
+    public void Write(AnimWriter writer, List<Keyframe> keyframes)
     {
-        int stringOffset = 0;
-        foreach (var str in strings)
-        {
-            stringOffset++;
-        }
-        writer.Write(stringOffset);
-        foreach (var c in Name)
-        {
-            strings.Add(c);
-        }
-        strings.Add('\0');
+        writer.SetOffset(Name + "ptr");
+        writer.WriteStringTableEntry(Name);
         writer.Write(FPS);
         writer.Write(FrameStart);
         writer.Write(FrameEnd);
