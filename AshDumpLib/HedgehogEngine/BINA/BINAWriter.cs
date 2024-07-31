@@ -34,6 +34,14 @@ public class BINAWriter : ExtendedBinaryWriter
         GenericOffset = 64;
     }
 
+    public override void SetOffset(string id)
+    {
+        long offset = Position;
+        Seek(Offsets[id], SeekOrigin.Begin);
+        Write(offset - GenericOffset);
+        OffsetValues[id] = offset;
+        Seek(offset, SeekOrigin.Begin);
+    }
 
     public override void WriteHeader()
     {

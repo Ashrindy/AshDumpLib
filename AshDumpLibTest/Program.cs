@@ -4,5 +4,5 @@ using AshDumpLib.HedgehogEngine.BINA;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
-VisibilityAnimation anim = new VisibilityAnimation(filepath);
+SkeletonPXD anim = new(filepath);
 anim.Save(filepath + "1");
