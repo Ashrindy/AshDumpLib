@@ -31,3 +31,4 @@ A library with simple reading and writing function for various file formats in v
 | VisibilityAnimation  |                 For easy reading and writing of the .vis-anim files                  |             Used ik-01's research on .mat-anim's              |
 |    DensitySetting    | For easy reading of the .densitysetting files, though there's alot of unknown values |                                                               |
 |        Probe         |                   For easy and writing reading of the .probe files                   |                                                               |
+|     SkeletonPXD      |                  For easy and writing reading of the .skl.pxd files                  |                                                               |
