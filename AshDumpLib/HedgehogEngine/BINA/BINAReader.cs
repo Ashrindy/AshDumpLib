@@ -69,10 +69,12 @@ public class BINAReader : ExtendedBinaryReader
         this.Skip(RelativeDataOffset);
     }
 
-    public override string ReadStringTableEntry()
+    public override string ReadStringTableEntry(bool useGenOffset = false)
     {
         //Reads the string table pointer
         long pointer = Read<long>();
+        if (useGenOffset)
+            pointer += genericOffset;
 
         //Saves the current position
         long prePos = Position;

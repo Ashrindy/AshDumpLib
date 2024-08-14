@@ -5,6 +5,12 @@ using System.Text;
 
 namespace AshDumpLib;
 
+public interface IExtendedBinarySerializable
+{
+    void Read(ExtendedBinaryReader reader);
+    void Write(ExtendedBinaryWriter writer);
+}
+
 public class ExtendedBinaryReader : BinaryObjectReader
 {
     public int stringTableOffset = 0;
@@ -36,13 +42,37 @@ public class ExtendedBinaryReader : BinaryObjectReader
         Seek(offset + genericOffset, origin);
     }
 
-    public virtual string ReadStringTableEntry()
+    public virtual string ReadStringTableEntry(bool useGenOffset = false)
     {
         long pointer = Read<int>();
-        long prePos = Position;
-        Jump(pointer + stringTableOffset, SeekOrigin.Begin);
-        string value = ReadString(StringBinaryFormat.NullTerminated);
-        Seek(prePos, SeekOrigin.Begin);
-        return value;
+        if (pointer > 0)
+        {
+            if (useGenOffset)
+                pointer += genericOffset;
+            long prePos = Position;
+            Jump(pointer + stringTableOffset, SeekOrigin.Begin);
+            string value = ReadString(StringBinaryFormat.NullTerminated);
+            Seek(prePos, SeekOrigin.Begin);
+            return value;
+        }
+        else
+            return "";
+    }
+
+    public virtual string ReadStringTableEntry64(bool useGenOffset = false)
+    {
+        long pointer = Read<long>();
+        if(pointer > 0)
+        {
+            if (useGenOffset)
+                pointer += genericOffset;
+            long prePos = Position;
+            Jump(pointer + stringTableOffset, SeekOrigin.Begin);
+            string value = ReadString(StringBinaryFormat.NullTerminated);
+            Seek(prePos, SeekOrigin.Begin);
+            return value;
+        }
+        else
+            return "";
     }
 }
