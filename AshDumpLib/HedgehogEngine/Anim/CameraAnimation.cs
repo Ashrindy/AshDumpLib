@@ -1,35 +1,25 @@
 ﻿using Amicitia.IO.Binary;
+using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine.Anim;
 
 //Research by Kwasior!
 
-public class CameraAnimation
+public class CameraAnimation : IFile
 {
     public const string FileExtension = ".cam-anim";
 
     public List<Camera> Cameras = new();
 
-
     public CameraAnimation() { }
 
-    public CameraAnimation(string filename)
-    {
-        Open(filename);
-    }
+    public CameraAnimation(string filename) => Open(filename);
 
-    public void Open(string filename)
-    {
-        Read(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
-    }
+    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
+    public override void WriteBuffer() => Write(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
 
-    public void Save(string filename)
-    {
-        Write(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
-    }
-
-    public void Read(ExtendedBinaryReader reader)
+    public override void Read(ExtendedBinaryReader reader)
     {
         reader.genericOffset = 0x18;
         reader.Jump(0, SeekOrigin.Begin);

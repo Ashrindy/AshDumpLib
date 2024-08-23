@@ -1,8 +1,9 @@
 ﻿using Amicitia.IO.Binary;
+using AshDumpLib.Helpers.Archives;
 
 namespace AshDumpLib.HedgehogEngine.Anim;
 
-public class MaterialAnimation
+public class MaterialAnimation : IFile
 {
     public const string FileExtension = ".mat-anim";
 
@@ -11,22 +12,12 @@ public class MaterialAnimation
 
     public MaterialAnimation() { }
 
-    public MaterialAnimation(string filename)
-    {
-        Open(filename);   
-    }
+    public MaterialAnimation(string filename) => Open(filename);
 
-    public void Open(string filename)
-    {
-        Read(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
-    }
+    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
+    public override void WriteBuffer() => Write(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
 
-    public void Save(string filename)
-    {
-        Write(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
-    }
-
-    public void Read(ExtendedBinaryReader reader)
+    public override void Read(ExtendedBinaryReader reader)
     {
         reader.genericOffset = 0x18;
         reader.Jump(0, SeekOrigin.Begin);

@@ -1,8 +1,9 @@
-﻿using System.Numerics;
+﻿using AshDumpLib.Helpers.Archives;
+using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
-public class DensitySetting
+public class DensitySetting : IFile
 {
     public struct OffsetInfo
     {
@@ -31,6 +32,12 @@ public class DensitySetting
     public List<IDItem> IDList = new();
     public List<string> CollisionData = new();
 
+    public DensitySetting() { }
+
+    public DensitySetting(string filename) => Open(filename);
+
+    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
+
     public void Read(BINAReader reader)
     {
         reader.ReadHeader();
@@ -48,7 +55,7 @@ public class DensitySetting
         Offsets = reader.ReadArray<OffsetInfo>(15);
 
         reader.Jump(Offsets[0].offset, SeekOrigin.Begin);
-        for(int i = 1; i < Offsets[0].count; i++)
+        for (int i = 1; i < Offsets[0].count; i++)
         {
             DensityModelReference tempDensity = new();
             tempDensity.Read(reader);
@@ -96,114 +103,114 @@ public class DensitySetting
 
         reader.Dispose();
     }
-}
 
-public class DensityModelReference
-{
-    public string Name = "";
-    public int Unk0 = 0;
-    public int Unk1 = 0;
-
-    public void Read(BINAReader reader)
+    public class DensityModelReference
     {
-        Name = reader.ReadStringTableEntry();
-        Unk0 = reader.ReadInt32();
-        Unk1 = reader.ReadInt32();
+        public string Name = "";
+        public int Unk0 = 0;
+        public int Unk1 = 0;
+
+        public void Read(BINAReader reader)
+        {
+            Name = reader.ReadStringTableEntry();
+            Unk0 = reader.ReadInt32();
+            Unk1 = reader.ReadInt32();
+        }
     }
-}
 
-public class IDInfo
-{
-    public short Unk0 = 128;
-    public short Unk1 = 0;
-    public short Unk2 = 4096;
-    public short Unk3 = 1;
-    public int Unk4 = 0;
-    public int Unk5 = 3;
-    public int Unk6 = 0;
-    public int Unk7 = 0;
-    public int Unk8 = 3;
-    public int Unk9 = 0;
-    public float Unk10 = 1;
-    public float Unk11 = 0;
-    public float Unk12 = 0;
-    public float Unk13 = 0;
-    public float Unk14 = 1;
-    public float Unk15 = 1;
-    public float Unk16 = 1;
-    public short Unk17 = 24888;
-    public short Unk18 = 2879;
-
-    public void Read(BINAReader reader)
+    public class IDInfo
     {
-        Unk0 = reader.Read<short>();
-        Unk1 = reader.Read<short>();
-        Unk2 = reader.Read<short>();
-        Unk3 = reader.Read<short>();
-        Unk4 = reader.Read<int>();
-        Unk5 = reader.Read<int>();
-        Unk6 = reader.Read<int>();
-        Unk7 = reader.Read<int>();
-        Unk8 = reader.Read<int>();
-        Unk9 = reader.Read<int>();
-        Unk10 = reader.Read<float>();
-        Unk11 = reader.Read<float>();
-        Unk12 = reader.Read<float>();
-        Unk13 = reader.Read<float>();
-        Unk14 = reader.Read<float>();
-        Unk15 = reader.Read<float>();
-        Unk16 = reader.Read<float>();
-        Unk17 = reader.Read<short>();
-        Unk18 = reader.Read<short>();
+        public short Unk0 = 128;
+        public short Unk1 = 0;
+        public short Unk2 = 4096;
+        public short Unk3 = 1;
+        public int Unk4 = 0;
+        public int Unk5 = 3;
+        public int Unk6 = 0;
+        public int Unk7 = 0;
+        public int Unk8 = 3;
+        public int Unk9 = 0;
+        public float Unk10 = 1;
+        public float Unk11 = 0;
+        public float Unk12 = 0;
+        public float Unk13 = 0;
+        public float Unk14 = 1;
+        public float Unk15 = 1;
+        public float Unk16 = 1;
+        public short Unk17 = 24888;
+        public short Unk18 = 2879;
+
+        public void Read(BINAReader reader)
+        {
+            Unk0 = reader.Read<short>();
+            Unk1 = reader.Read<short>();
+            Unk2 = reader.Read<short>();
+            Unk3 = reader.Read<short>();
+            Unk4 = reader.Read<int>();
+            Unk5 = reader.Read<int>();
+            Unk6 = reader.Read<int>();
+            Unk7 = reader.Read<int>();
+            Unk8 = reader.Read<int>();
+            Unk9 = reader.Read<int>();
+            Unk10 = reader.Read<float>();
+            Unk11 = reader.Read<float>();
+            Unk12 = reader.Read<float>();
+            Unk13 = reader.Read<float>();
+            Unk14 = reader.Read<float>();
+            Unk15 = reader.Read<float>();
+            Unk16 = reader.Read<float>();
+            Unk17 = reader.Read<short>();
+            Unk18 = reader.Read<short>();
+        }
     }
-}
 
-public class LODInfo
-{
-    public int ModelIndex = 0;
-    public float FadeDistance = 16;
-    public int Unk0 = 3;
-    public int Unk1 = 0;
-
-    public void Read(BINAReader reader)
+    public class LODInfo
     {
-        ModelIndex = reader.Read<int>();
-        FadeDistance = reader.Read<float>();
-        Unk0 = reader.Read<int>();
-        Unk1 = reader.Read<int>();
+        public int ModelIndex = 0;
+        public float FadeDistance = 16;
+        public int Unk0 = 3;
+        public int Unk1 = 0;
+
+        public void Read(BINAReader reader)
+        {
+            ModelIndex = reader.Read<int>();
+            FadeDistance = reader.Read<float>();
+            Unk0 = reader.Read<int>();
+            Unk1 = reader.Read<int>();
+        }
     }
-}
 
-public class AreaMapInfo
-{
-    public int Unk0 = 0;
-    public int ModelIndex = 0;
-    public int Unk1 = 5;
-    public int Unk2 = 0;
-
-    public void Read(BINAReader reader)
+    public class AreaMapInfo
     {
-        Unk0 = reader.Read<int>();
-        ModelIndex = reader.Read<int>();
-        Unk1 = reader.Read<int>();
-        Unk2 = reader.Read<int>();
+        public int Unk0 = 0;
+        public int ModelIndex = 0;
+        public int Unk1 = 5;
+        public int Unk2 = 0;
+
+        public void Read(BINAReader reader)
+        {
+            Unk0 = reader.Read<int>();
+            ModelIndex = reader.Read<int>();
+            Unk1 = reader.Read<int>();
+            Unk2 = reader.Read<int>();
+        }
     }
-}
 
-public class IDItem
-{
-    public string Name = "";
-    public int ID = 0;
-    public int Unk0 = 1;
-    public int Unk1 = 0;
-    public int Unk2 = 0;
-
-    public void Read(BINAReader reader)
+    public class IDItem
     {
-        Name = reader.ReadStringTableEntry();
-        ID = reader.Read<int>();
-        Unk0 = reader.Read<int>();
-        Unk1 = reader.Read<int>();
-        Unk2 = reader.Read<int>();
+        public string Name = "";
+        public int ID = 0;
+        public int Unk0 = 1;
+        public int Unk1 = 0;
+        public int Unk2 = 0;
+
+        public void Read(BINAReader reader)
+        {
+            Name = reader.ReadStringTableEntry();
+            ID = reader.Read<int>();
+            Unk0 = reader.Read<int>();
+            Unk1 = reader.Read<int>();
+            Unk2 = reader.Read<int>();
+        }
     }
 }

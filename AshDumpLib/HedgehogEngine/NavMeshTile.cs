@@ -1,9 +1,9 @@
-﻿using Amicitia.IO.Binary;
+﻿using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine;
 
-public class NavMeshTile
+public class NavMeshTile : IFile
 {
     public const string FileExtension = ".nmt";
     public const string Signature = "MVAN";
@@ -13,22 +13,9 @@ public class NavMeshTile
 
     public NavMeshTile() { }
 
-    public NavMeshTile(string filename)
-    {
-        Open(filename);
-    }
+    public NavMeshTile(string filename) => Open(filename);
 
-    public void Open(string filename)
-    {
-        Read(new(filename, Endianness.Little, System.Text.Encoding.Default));
-    }
-
-    public void Save(string filename)
-    {
-        Write(new(filename, Endianness.Little, System.Text.Encoding.Default));
-    }
-
-    public void Read(ExtendedBinaryReader reader)
+    public override void Read(ExtendedBinaryReader reader)
     {
         reader.ReadSignature(Signature);
         Version = reader.Read<int>();
@@ -40,7 +27,7 @@ public class NavMeshTile
         reader.Dispose();
     }
 
-    public void Write(ExtendedBinaryWriter writer)
+    public override void Write(ExtendedBinaryWriter writer)
     {
         writer.WriteSignature(Signature);
         writer.Write(Version);

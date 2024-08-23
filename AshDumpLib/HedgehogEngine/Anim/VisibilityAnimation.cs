@@ -1,8 +1,9 @@
 ﻿using Amicitia.IO.Binary;
+using AshDumpLib.Helpers.Archives;
 
 namespace AshDumpLib.HedgehogEngine.Anim;
 
-public class VisibilityAnimation
+public class VisibilityAnimation : IFile
 {
     public const string FileExtension = ".vis-anim";
 
@@ -13,22 +14,11 @@ public class VisibilityAnimation
 
     public VisibilityAnimation() { }
 
-    public VisibilityAnimation(string filename)
-    {
-        Open(filename);
-    }
+    public VisibilityAnimation(string filename) => Open(filename);
+    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
+    public override void WriteBuffer() => Write(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
 
-    public void Open(string filename)
-    {
-        Read(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
-    }
-
-    public void Save(string filename)
-    {
-        Write(new(filename, Endianness.Big, System.Text.Encoding.UTF8));
-    }
-
-    public void Read(ExtendedBinaryReader reader)
+    public override void Read(ExtendedBinaryReader reader)
     {
         reader.genericOffset = 24;
         reader.Jump(0, SeekOrigin.Begin);

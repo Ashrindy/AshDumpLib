@@ -1,9 +1,9 @@
-﻿using Amicitia.IO.Binary;
+﻿using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine;
 
-public class NavMeshConfig
+public class NavMeshConfig : IFile
 {
     public const string FileExtension = ".nmc";
     public const string Signature = "CVAN";
@@ -15,22 +15,9 @@ public class NavMeshConfig
 
     public NavMeshConfig() { }
 
-    public NavMeshConfig(string filename)
-    {
-        Open(filename);
-    }
+    public NavMeshConfig(string filename) => Open(filename);
 
-    public void Open(string filename)
-    {
-        Read(new(filename, Endianness.Little, System.Text.Encoding.UTF8));
-    }
-
-    public void Save(string filename)
-    {
-        Write(new(filename, Endianness.Little, System.Text.Encoding.UTF8));
-    }
-
-    public void Read(ExtendedBinaryReader reader)
+    public override void Read(ExtendedBinaryReader reader)
     {
         reader.ReadSignature(Signature);
         Version = reader.Read<int>();
@@ -40,7 +27,7 @@ public class NavMeshConfig
         reader.Dispose();
     }
 
-    public void Write(ExtendedBinaryWriter writer)
+    public override void Write(ExtendedBinaryWriter writer)
     {
         writer.WriteSignature(Signature);
         writer.Write(Version);

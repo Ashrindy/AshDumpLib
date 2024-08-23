@@ -1,9 +1,9 @@
-﻿using Amicitia.IO.Binary;
+﻿using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
-public class Probe
+public class Probe : IFile
 {
     public const string FileExtension = ".probe";
     public const string BINASignature = "DPIC";
@@ -13,20 +13,10 @@ public class Probe
 
     public Probe() { }
 
-    public Probe(string filename)
-    {
-        Open(filename);
-    }
+    public Probe(string filename) => Open(filename);
 
-    public void Open(string filename)
-    {
-        Read(new(filename, Endianness.Little, System.Text.Encoding.UTF8));
-    }
-
-    public void Save(string filename)
-    {
-        Write(new(filename, Endianness.Little, System.Text.Encoding.UTF8));
-    }
+    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
+    public override void WriteBuffer() => Write(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
 
     public void Read(BINAReader reader)
     {
@@ -54,37 +44,35 @@ public class Probe
         writer.Write<long>(Probes.Count);
         writer.SetOffset("table");
         foreach(var i in Probes)
-        {
             i.Write(writer);
-        }
         writer.FinishWrite();
         writer.Dispose();
     }
-}
 
-public class ProbeItem
-{
-    public struct UnkStruct
+    public class ProbeItem
     {
-        public Vector3 Unk0;
-        public float Unk1;
-    }
+        public struct UnkStruct
+        {
+            public Vector3 Unk0;
+            public float Unk1;
+        }
 
-    public string Name = "";
-    public UnkStruct[] Unk0 = new UnkStruct[5];
-    public int[] Unk1 = new int[8];
+        public string Name = "";
+        public UnkStruct[] Unk0 = new UnkStruct[5];
+        public int[] Unk1 = new int[8];
 
-    public void Read(BINAReader reader)
-    {
-        Unk0 = reader.ReadArray<UnkStruct>(5);
-        Name = reader.ReadStringTableEntry();
-        Unk1 = reader.ReadArray<int>(8);
-    }
+        public void Read(BINAReader reader)
+        {
+            Unk0 = reader.ReadArray<UnkStruct>(5);
+            Name = reader.ReadStringTableEntry();
+            Unk1 = reader.ReadArray<int>(8);
+        }
 
-    public void Write(BINAWriter writer)
-    {
-        writer.WriteArray(Unk0);
-        writer.WriteStringTableEntry(Name);
-        writer.WriteArray(Unk1);
+        public void Write(BINAWriter writer)
+        {
+            writer.WriteArray(Unk0);
+            writer.WriteStringTableEntry(Name);
+            writer.WriteArray(Unk1);
+        }
     }
 }

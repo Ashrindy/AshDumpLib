@@ -1,9 +1,10 @@
 ﻿using Amicitia.IO.Binary;
+using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
-public class SkeletonPXD
+public class SkeletonPXD : IFile
 {
     public const string FileExtension = ".skl.pxd";
     public const string BINASignature = "KSXP";
@@ -13,20 +14,10 @@ public class SkeletonPXD
 
     public SkeletonPXD() { }
 
-    public SkeletonPXD(string filename)
-    {
-        Open(filename);
-    }
+    public SkeletonPXD(string filename) => Open(filename);
 
-    public void Open(string filename)
-    {
-        Read(new(filename, Endianness.Little, System.Text.Encoding.UTF8));
-    }
-
-    public void Save(string filename)
-    {
-        Write(new(filename, Endianness.Little, System.Text.Encoding.UTF8));
-    }
+    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
+    public override void WriteBuffer() => Write(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
 
     public void Read(BINAReader reader)
     {
