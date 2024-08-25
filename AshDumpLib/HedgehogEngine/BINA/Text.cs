@@ -1,6 +1,5 @@
 ﻿using Amicitia.IO.Binary;
 using AshDumpLib.Helpers.Archives;
-using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 

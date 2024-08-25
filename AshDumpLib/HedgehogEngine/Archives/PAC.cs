@@ -3,9 +3,6 @@ using AshDumpLib.HedgehogEngine.Anim;
 using AshDumpLib.HedgehogEngine.BINA;
 using AshDumpLib.Helpers.Archives;
 using K4os.Compression.LZ4;
-using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Xml.Linq;
 
 namespace AshDumpLib.HedgehogEngine.Archives;
 

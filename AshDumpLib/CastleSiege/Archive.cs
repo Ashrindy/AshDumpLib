@@ -1,14 +1,6 @@
 ﻿using Amicitia.IO.Binary;
-using AshDumpLib.Helpers.Archives;
 using ICSharpCode.SharpZipLib.Zip.Compression;
 using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AshDumpLib.CastleSiege;
 
