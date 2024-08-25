@@ -15,7 +15,7 @@ namespace AshDumpLib.CastleSiege;
 public class Archive : AshDumpLib.Helpers.Archives.Archive
 {
     public const string FileExtension = ".rda";
-    public const string Signature = "Resource File v1.1";
+    public const string Signature = "Resource File V1.1";
 
     public Archive() { }
 
