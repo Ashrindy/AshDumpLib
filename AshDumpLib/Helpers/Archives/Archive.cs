@@ -17,6 +17,8 @@ public class Archive : IFile
         Open(filename, data);
     }
 
+    public IFile GetFile(string filename) { return Files.Find(x => x.FilePath == filename); }
+
     public void AddFile(IFile file) => Files.Add(file);
     public void AddFile(string filename) => Files.Add(new(filename));
     public void AddFile(string filename, byte[] data) => Files.Add(new(filename, data));

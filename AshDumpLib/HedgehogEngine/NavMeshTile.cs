@@ -31,7 +31,9 @@ public class NavMeshTile : IFile
     {
         writer.WriteSignature(Signature);
         writer.Write(Version);
-        
+
         writer.Dispose();
+
+        throw new NotImplementedException();
     }
 }

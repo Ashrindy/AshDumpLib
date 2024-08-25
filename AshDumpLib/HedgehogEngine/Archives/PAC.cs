@@ -3,7 +3,9 @@ using AshDumpLib.HedgehogEngine.Anim;
 using AshDumpLib.HedgehogEngine.BINA;
 using AshDumpLib.Helpers.Archives;
 using K4os.Compression.LZ4;
+using System.Reflection.PortableExecutable;
 using System.Text;
+using System.Xml.Linq;
 
 namespace AshDumpLib.HedgehogEngine.Archives;
 
@@ -11,6 +13,172 @@ public class PAC : Archive
 {
     public const string FileExtension = ".pac";
     public const string Signature = "PACx";
+
+    public struct ResType
+    {
+        public enum ELocation
+        {
+            Root = 0,
+            Split,
+            V2Merged
+        }
+
+        public string Extension;
+        public string Type;
+        public ELocation Location;
+    }
+
+    // Taken from HedgeLib++
+    public readonly List<ResType> ResTypesRangers = new()
+    {
+        new() { Extension = "mlevel",            Type = "ResMasterLevel",             Location = ResType.ELocation.Root},
+        new() { Extension = "level",             Type = "ResLevel",                   Location = ResType.ELocation.Root},
+        new() { Extension = "anm.pxd",           Type = "ResAnimationPxd",            Location = ResType.ELocation.Root},
+        new() { Extension = "skl.pxd",           Type = "ResSkeletonPxd",             Location = ResType.ELocation.Root},
+        new() { Extension = "dds",               Type = "ResTexture",                 Location = ResType.ELocation.Split},
+        new() { Extension = "asm",               Type = "ResAnimator",                Location = ResType.ELocation.Root},
+        new() { Extension = "mat-anim",          Type = "ResAnimMaterial",            Location = ResType.ELocation.Split},
+        new() { Extension = "dvscene",           Type = "ResDvScene",                 Location = ResType.ELocation.Root},
+        new() { Extension = "uv-anim",           Type = "ResAnimTexSrt",              Location = ResType.ELocation.Split},
+        new() { Extension = "cemt",              Type = "ResCyanEffect",              Location = ResType.ELocation.Root},
+        new() { Extension = "material",          Type = "ResMirageMaterial",          Location = ResType.ELocation.Split},
+        new() { Extension = "model",             Type = "ResModel",                   Location = ResType.ELocation.Split},
+        new() { Extension = "cam-anim",          Type = "ResAnimCameraContainer",     Location = ResType.ELocation.Split},
+        new() { Extension = "vis-anim",          Type = "ResAnimVis",                 Location = ResType.ELocation.Split},
+        new() { Extension = "rfl",               Type = "ResReflection",              Location = ResType.ELocation.Root},
+        new() { Extension = "cnvrs-text",        Type = "ResText",                    Location = ResType.ELocation.Root},
+        new() { Extension = "btmesh",            Type = "ResBulletMesh",              Location = ResType.ELocation.Root},
+        new() { Extension = "effdb",             Type = "ResParticleLocation",        Location = ResType.ELocation.Root},
+        new() { Extension = "gedit",             Type = "ResObjectWorld",             Location = ResType.ELocation.Root},
+        new() { Extension = "pccol",             Type = "ResPointcloudCollision",     Location = ResType.ELocation.Root},
+        new() { Extension = "path",              Type = "ResSplinePath",              Location = ResType.ELocation.Root},
+        new() { Extension = "lf",                Type = "ResSHLightField",            Location = ResType.ELocation.Root},
+        new() { Extension = "probe",             Type = "ResProbe",                   Location = ResType.ELocation.Root},
+        new() { Extension = "occ",               Type = "ResOcclusionCapsule",        Location = ResType.ELocation.Root},
+        new() { Extension = "swif",              Type = "ResSurfRideProject",         Location = ResType.ELocation.Root},
+        new() { Extension = "densitysetting",    Type = "ResDensitySetting",          Location = ResType.ELocation.Root},
+        new() { Extension = "densitypointcloud", Type = "ResDensityPointCloud",       Location = ResType.ELocation.Root},
+        new() { Extension = "lua",               Type = "ResLuaData",                 Location = ResType.ELocation.Root},
+        new() { Extension = "btsmc",             Type = "ResSkinnedMeshCollider",     Location = ResType.ELocation.Root},
+        new() { Extension = "terrain-model",     Type = "ResMirageTerrainModel",      Location = ResType.ELocation.Split},
+        new() { Extension = "gismop",            Type = "ResGismoConfigPlan",         Location = ResType.ELocation.Root},
+        new() { Extension = "fxcol",             Type = "ResFxColFile",               Location = ResType.ELocation.Root},
+        new() { Extension = "gismod",            Type = "ResGismoConfigDesign",       Location = ResType.ELocation.Root},
+        new() { Extension = "nmt",               Type = "ResNavMeshTile",             Location = ResType.ELocation.Root},
+        new() { Extension = "pcmodel",           Type = "ResPointcloudModel",         Location = ResType.ELocation.Root},
+        new() { Extension = "nmc",               Type = "ResNavMeshConfig",           Location = ResType.ELocation.Root},
+        new() { Extension = "vat",               Type = "ResVertexAnimationTexture",  Location = ResType.ELocation.Root},
+        new() { Extension = "heightfield",       Type = "ResHeightField",             Location = ResType.ELocation.Root},
+        new() { Extension = "light",             Type = "ResMirageLight",             Location = ResType.ELocation.Root},
+        new() { Extension = "pba",               Type = "ResPhysicalSkeleton",        Location = ResType.ELocation.Root},
+        new() { Extension = "pcrt",              Type = "ResPointcloudLight",         Location = ResType.ELocation.Root},
+        new() { Extension = "aism",              Type = "ResAIStateMachine",          Location = ResType.ELocation.Root},
+        new() { Extension = "cnvrs-proj",        Type = "ResTextProject",             Location = ResType.ELocation.Root},
+        new() { Extension = "terrain-material",  Type = "ResTerrainMaterial",         Location = ResType.ELocation.Root},
+        new() { Extension = "pt-anim",           Type = "ResAnimTexPat",              Location = ResType.ELocation.Split},
+        new() { Extension = "okern",             Type = "ResOpticalKerning",          Location = ResType.ELocation.Root},
+        new() { Extension = "scfnt",             Type = "ResScalableFontSet",         Location = ResType.ELocation.Root},
+        new() { Extension = "cso",               Type = "ResMirageComputeShader",     Location = ResType.ELocation.Split},
+        new() { Extension = "pso",               Type = "ResMiragePixelShader",       Location = ResType.ELocation.Split},
+        new() { Extension = "vib",               Type = "ResVibration",               Location = ResType.ELocation.Root},
+        new() { Extension = "vso",               Type = "ResMirageVertexShader",      Location = ResType.ELocation.Split},
+        new() { Extension = "pointcloud",        Type = "ResPointcloud",              Location = ResType.ELocation.Root},
+        new() { Extension = "shader-list",       Type = "ResShaderList",              Location = ResType.ELocation.Root},
+        new() { Extension = "cnvrs-meta",        Type = "ResTextMeta",                Location = ResType.ELocation.Root},
+    };
+
+    ResType GetResTypeByExt(string extension) { return ResTypesRangers.Find(x => x.Extension == extension); }
+    ResType GetResTypeByType(string type) { return ResTypesRangers.Find(x => x.Type == type); }
+
+    struct SplitString
+    {
+        public string Value;
+        public int ParentIndex;
+        public int StartIndex;
+    }
+
+    static string CommonPrefix(string[] input)
+    {
+        if (input.Length == 0)
+        {
+            return "";
+        }
+        Array.Sort(input);
+        string prefix = "";
+        for (int i = 0; i < input[0].Length; i++)
+        {
+            char c = input[0][i];
+            for (int j = 1; j < input.Length; j++)
+            {
+                if (i >= input[j].Length || input[j][i] != c)
+                {
+                    return prefix;
+                }
+            }
+            prefix += c;
+        }
+        return prefix;
+    }
+
+    static List<Tuple<string, string>> FindStringsWithCommonSubstrings(string[] strings, int minLength)
+    {
+        List<Tuple<string, string>> commonPairs = new List<Tuple<string, string>>();
+
+        for (int i = 0; i < strings.Length; i++)
+        {
+            for (int j = i + 1; j < strings.Length; j++)
+            {
+                if (HasCommonSubstring(strings[i], strings[j], minLength))
+                {
+                    commonPairs.Add(new Tuple<string, string>(strings[i], strings[j]));
+                }
+            }
+        }
+
+        return commonPairs;
+    }
+
+    static bool HasCommonSubstring(string str1, string str2, int minLength)
+    {
+        for (int length = minLength; length <= Math.Min(str1.Length, str2.Length); length++)
+        {
+            for (int i = 0; i <= str1.Length - length; i++)
+            {
+                string substring = str1.Substring(i, length);
+                if (str2.Contains(substring))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static void ConvertToSplitStrings(List<string> strings, int parentID, int startID, ref List<SplitString> sStr)
+    {
+        string prefix = CommonPrefix(strings.ToArray());
+        sStr.Add(new() { Value = prefix, ParentIndex = parentID, StartIndex = startID });
+        if (prefix != "")
+        {
+            List<string> strs = new();
+            foreach(var i in strings)
+                strs.Add(i.Substring(prefix.Length));
+            ConvertToSplitStrings(strs, parentID++, startID + prefix.Length, ref sStr);
+        }
+    }
+
+    static List<SplitString> SplitStringsIntoNodes(List<string> strings)
+    {
+        List<SplitString> sStr = new();
+        List<string> sStrings = new(new HashSet<string>(strings));
+        ConvertToSplitStrings(sStrings, -1, 0, ref sStr);
+        return sStr;
+    }
+
+
+    public PACVersion Version;
+    public uint ID = 0;
+    public PacType Type;
 
     List<string> parentPaths = new();
     public List<Dependency> dependencies = new();
@@ -23,14 +191,53 @@ public class PAC : Archive
     {
         reader.ReadSignature(Signature);
         Header header = reader.Read<Header>();
-        if (header.majorVer == '4')
+        ID = header.id;
+        Version = header.version;
+        if (header.version.MajorVersion == '4')
         {
-            if (header.minorVer == '0')
+            if (header.version.MinorVersion == '0')
             {
-                if (header.revVer == '2')
+                if (header.version.RevisionVersion == '2')
                     ReadV2(reader);
-                else if (header.revVer == '3')
+                else if (header.version.RevisionVersion == '3')
                     ReadV3(reader);
+                else
+                    throw new Exception("Unimplemented Version!");
+            }
+            else
+                throw new Exception("Unimplemented Version!");
+        }
+        else
+            throw new Exception("Unimplemented Version!");
+    }
+
+    public override void Write(ExtendedBinaryWriter writer)
+    {
+        writer.WriteSignature(Signature);
+        writer.Write(Version);
+        writer.Write((byte)'L');
+        if (ID == 0)
+        {
+            Random rnd = new();
+            byte[] ids = new byte[4];
+            for (int i = 0; i < 4; i++)
+            {
+                ids[i] = (byte)rnd.Next(0, 256);
+                writer.Write(ids[i]);
+            }
+            ID = BitConverter.ToUInt32(ids, 0);
+        }
+        else
+            writer.Write(ID);
+        writer.AddOffset("fileSize", false);
+        if (Version.MajorVersion == '4')
+        {
+            if (Version.MinorVersion == '0')
+            {
+                if (Version.RevisionVersion == '2')
+                    WriteV2(writer);
+                else if (Version.RevisionVersion == '3')
+                    WriteV3(writer);
                 else
                     throw new Exception("Unimplemented Version!");
             }
@@ -84,10 +291,34 @@ public class PAC : Archive
                         {
                             switch (tree.nodes[i].data.nodes[x].data.extension)
                             {
+                                case "anm.pxd":
+                                    AnimationPXD animationPXD = new();
+                                    animationPXD.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(animationPXD);
+                                    break;
+
+                                case "cnvrs-text":
+                                    Text text = new();
+                                    text.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(text);
+                                    break;
+
+                                case "densitypointcloud":
+                                    DensityPointCloud densityPointCloud = new();
+                                    densityPointCloud.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(densityPointCloud);
+                                    break;
+
                                 case "densitysetting":
                                     DensitySetting densitySetting = new();
                                     densitySetting.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
                                     AddFile(densitySetting);
+                                    break;
+
+                                case "level":
+                                    Level level = new();
+                                    level.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(level);
                                     break;
 
                                 case "nmc":
@@ -102,10 +333,28 @@ public class PAC : Archive
                                     AddFile(nmt);
                                     break;
 
+                                case "heightfield":
+                                    HeightField hgt = new();
+                                    hgt.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(hgt);
+                                    break;
+
+                                case "pcmodel" or "pcrt" or "pccol":
+                                    PointCloud pointcloud = new();
+                                    pointcloud.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(pointcloud);
+                                    break;
+
                                 case "probe":
                                     Probe probe = new();
                                     probe.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
                                     AddFile(probe);
+                                    break;
+
+                                case "terrain-material":
+                                    TerrainMaterial tMat = new();
+                                    tMat.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(tMat);
                                     break;
 
                                 case "skl.pxd":
@@ -162,6 +411,56 @@ public class PAC : Archive
                 dependencies.Add(depen);
             }
         }
+    }
+
+    void WriteV2(ExtendedBinaryWriter writer) 
+    {
+        writer.AddOffset("treesSize", false);
+        writer.AddOffset("depTableSize", false);
+        writer.AddOffset("dataEntriesSize", false);
+        writer.AddOffset("strTableSize", false);
+        writer.AddOffset("fileDataSize", false);
+        writer.AddOffset("offTableSize", false);
+        writer.Write((short)Type);
+        //Just a temporary thing for now
+        writer.Write((short)264);
+        writer.Write(dependencies.Count);
+        Tree<Node<Tree<Node<FileNode>>>> tree = new();
+        Random rnd = new();
+        tree.ID = rnd.Next();
+        Files.Sort((x, y) => string.Compare(x.Extension, y.Extension));
+        List<string> resTypes = new();
+        foreach(var i in Files)
+            resTypes.Add(GetResTypeByExt(i.Extension).Type);
+        Node<Tree<Node<FileNode>>> mainNode = new();
+        mainNode.name = "";
+        mainNode.parentIndex = -1;
+        mainNode.globalIndex = 0;
+        mainNode.dataIndex = -1;
+        mainNode.childIndices.Add(1);
+        mainNode.bufferStartIndex = 0;
+        tree.nodes.Add(mainNode);
+        var f = SplitStringsIntoNodes(resTypes);
+        //tree.nodes.AddRange();
+        tree.Write(writer);
+        tree.FinishWrite(writer);
+
+        int stringTableOffset = (int)writer.Position;
+
+        foreach (var i in writer.StringTableOffsets)
+        {
+            writer.Seek(i.Key, SeekOrigin.Begin);
+            writer.Write(i.Value + stringTableOffset);
+        }
+        writer.Seek(stringTableOffset, SeekOrigin.Begin);
+        foreach (var i in writer.StringTable)
+            writer.WriteChar(i);
+
+        writer.FixPadding(4);
+
+        int stringSize = (int)writer.Position - (int)writer.GetOffsetValue("strTableSize");
+
+        writer.WriteAt(stringSize, writer.GetOffset("strTableSize"));
     }
 
     bool HasMetadata(HeaderV4 m)
@@ -225,31 +524,78 @@ public class PAC : Archive
         for (int i = 0; i < rootPac.dependencies.Count; i++)
         {
             reader.Seek(rootPac.dependencies[i].dataPos, SeekOrigin.Begin);
-            rootPac.dependencies[i].main.uncompressedData = new byte[rootPac.dependencies[i].main.uncompressedSize];
-            List<byte> uncompressedData = new();
-            for (int x = 0; x < rootPac.dependencies[i].chunks.Count; x++)
+            if (rootPac.dependencies[i].main.uncompressedSize == rootPac.dependencies[i].main.compressedSize)
             {
-                rootPac.dependencies[i].chunks[x].compressedData = reader.ReadArray<byte>(rootPac.dependencies[i].chunks[x].compressedSize);
-                rootPac.dependencies[i].chunks[x].uncompressedData = new byte[rootPac.dependencies[i].chunks[x].uncompressedSize];
-                _ = LZ4Codec.Decode(rootPac.dependencies[i].chunks[x].compressedData, 0, rootPac.dependencies[i].chunks[x].compressedSize, rootPac.dependencies[i].chunks[x].uncompressedData, 0, rootPac.dependencies[i].chunks[x].uncompressedSize);
-                uncompressedData.AddRange(rootPac.dependencies[i].chunks[x].uncompressedData);
+                rootPac.dependencies[i].main.uncompressedData = reader.ReadArray<byte>(rootPac.dependencies[i].main.uncompressedSize);
             }
-            rootPac.dependencies[i].main.uncompressedData = uncompressedData.ToArray();
-        }
-        foreach (var i in rootPac.dependencies)
-        {
+            else
+            {
+                rootPac.dependencies[i].main.uncompressedData = new byte[rootPac.dependencies[i].main.uncompressedSize];
+                List<byte> uncompressedData = new();
+                for (int x = 0; x < rootPac.dependencies[i].chunks.Count; x++)
+                {
+                    rootPac.dependencies[i].chunks[x].compressedData = reader.ReadArray<byte>(rootPac.dependencies[i].chunks[x].compressedSize);
+                    rootPac.dependencies[i].chunks[x].uncompressedData = new byte[rootPac.dependencies[i].chunks[x].uncompressedSize];
+                    _ = LZ4Codec.Decode(rootPac.dependencies[i].chunks[x].compressedData, 0, rootPac.dependencies[i].chunks[x].compressedSize, rootPac.dependencies[i].chunks[x].uncompressedData, 0, rootPac.dependencies[i].chunks[x].uncompressedSize);
+                    uncompressedData.AddRange(rootPac.dependencies[i].chunks[x].uncompressedData);
+                }
+                rootPac.dependencies[i].main.uncompressedData = uncompressedData.ToArray();
+            }
             PAC tempPac = new();
-            tempPac.Open(i.name, i.main.uncompressedData, parseFiles);
+            tempPac.Open(rootPac.dependencies[i].name, rootPac.dependencies[i].main.uncompressedData, parseFiles);
             foreach (var x in tempPac.Files)
                 AddFile(x);
         }
     }
 
+    void WriteV3(ExtendedBinaryWriter writer)
+    {
+        writer.AddOffset("root");
+        writer.AddOffset("rootCSize", false);
+        writer.AddOffset("rootUCSize", false);
+        FlagsV4 flags = FlagsV4.unk | FlagsV4.hasMetadata;
+        if(parentPaths.Count > 0)
+            flags |= FlagsV4.hasParents;
+        writer.Write((short)flags);
+        writer.Write((short)(FlagsV3.unk | FlagsV3.lz4));
+
+        writer.AddOffset("parentsSize", false);
+        writer.AddOffset("chunkTableSize", false);
+        writer.AddOffset("strTableSize", false);
+        writer.AddOffset("offTableSize", false);
+        writer.Write((long)parentPaths.Count);
+        writer.AddOffset("parentsTable", true);
+        writer.WriteNulls(4);
+        writer.SetOffset("parentsTable");
+        foreach(var path in parentPaths)
+        {
+            writer.AddOffset(path, true);
+            writer.WriteNulls(4);
+        }
+        PAC rootPac = new();
+        rootPac.ID = ID;
+        rootPac.Files = Files;
+        rootPac.Version = new() { MajorVersion = Version.MajorVersion, MinorVersion = (byte)'0', RevisionVersion = (byte)'2' };
+        rootPac.Type = PacType.Root;
+        Chunk rootChunk = new();
+        int size = 0;
+        foreach (var i in Files)
+            size += i.Data.Length;
+        rootChunk.uncompressedData = new byte[1024 + Files.Count * 32 + size];
+        rootPac.Write(new(new MemoryStream(rootChunk.uncompressedData), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Little));
+        File.WriteAllBytes(FilePath + ".root", rootChunk.uncompressedData);
+    }
+
+    public struct PACVersion
+    {
+        public byte MajorVersion;
+        public byte MinorVersion;
+        public byte RevisionVersion;
+    }
+
     struct Header
     {
-        public byte majorVer;
-        public byte minorVer;
-        public byte revVer;
+        public PACVersion version;
         public byte endianess;
         public uint id;
         public uint fileSize;
@@ -310,11 +656,33 @@ public class PAC : Archive
                     chunks.Add(chunk);
                 }
             });
+            if (chunks[0].uncompressedSize == 0)
+            {
+                chunks.Clear();
+                chunks.Add(main);
+            }
         }
 
         public void Write(ExtendedBinaryWriter writer)
         {
-            throw new NotImplementedException();
+            writer.AddOffset(name);
+            writer.WriteNulls(4);
+            writer.Write(main.compressedSize);
+            writer.Write(main.uncompressedSize);
+            writer.Write(dataPos);
+            writer.Write(chunks.Count);
+            writer.AddOffset(name + "chunkOffsets");
+            writer.WriteNulls(4);
+        }
+
+        public void FinishWrite(ExtendedBinaryWriter writer)
+        {
+            writer.SetOffset(name + "chunkOffsets");
+            foreach(var i in chunks)
+            {
+                writer.Write(i.compressedSize);
+                writer.Write(i.uncompressedSize);
+            }
         }
     }
 
@@ -322,6 +690,7 @@ public class PAC : Archive
     {
         public List<T> nodes = new();
         public List<int> indices = new();
+        public int ID = 0;
 
         public void Read(ExtendedBinaryReader reader)
         {
@@ -342,7 +711,23 @@ public class PAC : Archive
 
         public void Write(ExtendedBinaryWriter writer)
         {
-            throw new NotImplementedException();
+            writer.Write(nodes.Count);
+            writer.Write(indices.Count);
+            writer.AddOffset(nodes.Count.ToString() + "nodes" + typeof(T).Name + ID);
+            writer.WriteNulls(4);
+            writer.AddOffset(indices.Count.ToString() + "indices" + typeof(T).Name + ID);
+            writer.WriteNulls(4);
+        }
+
+        public void FinishWrite(ExtendedBinaryWriter writer)
+        {
+            writer.SetOffset(nodes.Count.ToString() + "nodes" + typeof(T).Name + ID);
+            foreach (var i in nodes)
+                i.Write(writer);
+            foreach (var i in nodes)
+                i.FinishWrite(writer);
+            writer.SetOffset(indices.Count.ToString() + "indices" + typeof(T).Name + ID);
+            writer.WriteArray(indices.ToArray());
         }
     }
 
@@ -354,7 +739,8 @@ public class PAC : Archive
         public int dataIndex;
         public List<int> childIndices = new();
         public int bufferStartIndex;
-        public T data = new();
+        public T data;
+        public int ID = 0;
 
         public void Read(ExtendedBinaryReader reader)
         {
@@ -370,12 +756,39 @@ public class PAC : Archive
             if (childIndicesPtr != 0)
                 childIndices.AddRange(reader.ReadArrayAtOffset<int>(childIndicesPtr, childCount));
             if (hasData == 1)
+            {
+                data = new();
                 reader.ReadAtOffset(dataPtr + reader.genericOffset, () => data.Read(reader));
+            }
         }
 
         public void Write(ExtendedBinaryWriter writer)
         {
-            throw new NotImplementedException();
+            writer.WriteStringTableEntry(name);
+            writer.AddOffset(globalIndex + "data" + ID);
+            writer.Skip(4);
+            writer.AddOffset(globalIndex + "indices" + ID);
+            writer.Skip(4);
+            writer.Write(parentIndex);
+            writer.Write(globalIndex);
+            writer.Write(dataIndex);
+            writer.Write((short)childIndices.Count);
+            if (data == null)
+                writer.Write((byte)0);
+            else
+                writer.Write((byte)1);
+            writer.Write((byte)bufferStartIndex);
+        }
+
+        public void FinishWrite(ExtendedBinaryWriter writer)
+        {
+            if(data != null)
+            {
+                writer.SetOffset(globalIndex + "data" + ID);
+                data.Write(writer);
+            }
+            writer.SetOffset(globalIndex + "indices" + ID);
+            writer.WriteArray(childIndices.ToArray());
         }
     }
 
@@ -402,6 +815,18 @@ public class PAC : Archive
 
         public void Write(ExtendedBinaryWriter writer)
         {
+            writer.Write(uid);
+            writer.Write(dataSize);
+            writer.WriteNulls(8);
+            writer.Write(dataPtr);
+            writer.WriteNulls(8);
+            writer.WriteStringTableEntry(extension);
+            writer.WriteNulls(4);
+            writer.Write(flags);
+        }
+
+        public void FinishWrite(ExtendedBinaryWriter writer)
+        {
             throw new NotImplementedException();
         }
     }
@@ -427,5 +852,13 @@ public class PAC : Archive
         unk = 8,
         deflate = 0x100,
         lz4 = 0x200
+    }
+
+    public enum PacType
+    {
+        Root = 1,
+        Split,
+        HasSplits = 4,
+        unk = 8
     }
 }

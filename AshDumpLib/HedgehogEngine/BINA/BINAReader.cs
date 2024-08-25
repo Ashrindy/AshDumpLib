@@ -5,6 +5,14 @@ using System.Text;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
+public interface IBINASerializable
+{
+    void Read(BINAReader reader);
+    void Write(BINAWriter writer);
+
+    void FinishWrite(BINAWriter writer);
+}
+
 public class BINAReader : ExtendedBinaryReader
 {
     public const string BINASignature = "BINA";

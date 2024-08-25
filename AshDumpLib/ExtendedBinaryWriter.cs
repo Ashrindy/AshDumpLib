@@ -30,13 +30,13 @@ namespace AshDumpLib
         public virtual void WriteStringTableEntry(string entry)
         {
             //Adds offset to the OffsetTable
-            Offsets.Add(entry, Position - GenericOffset);
+            Offsets.Add(entry + "." + Position, Position - GenericOffset);
 
             //Adds offset to the StringTableOffset for later correction
             StringTableOffsets.Add(Position, StringTable.Count);
 
             //Adds offset to the OffsetsWrite dictionary
-            OffsetsWrite.Add(entry, true);
+            OffsetsWrite.Add(entry + "." + Position, true);
 
             //Writes the temporary offset in the StringTable
             Write<long>(StringTable.Count);

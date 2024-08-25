@@ -6,6 +6,4 @@ using AshDumpLib.HedgehogEngine.BINA;
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
 PAC pac = new(filepath);
-Directory.CreateDirectory(filepath + "_extracted");
-foreach (var i in pac.Files)
-    File.WriteAllBytes(i.FilePath, i.Data);
+Console.WriteLine("test");

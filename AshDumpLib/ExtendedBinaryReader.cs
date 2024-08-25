@@ -9,6 +9,8 @@ public interface IExtendedBinarySerializable
 {
     void Read(ExtendedBinaryReader reader);
     void Write(ExtendedBinaryWriter writer);
+
+    void FinishWrite(ExtendedBinaryWriter writer);
 }
 
 public class ExtendedBinaryReader : BinaryObjectReader
