@@ -50,7 +50,9 @@ public class IFile
     public virtual void Read(ExtendedBinaryReader reader) => throw new NotImplementedException();
 
     public virtual void Save() => WriteBuffer();
+    public void SaveToFile(string filename) { WriteBuffer(); File.WriteAllBytes(filename, Data); }
 
     public virtual void Write(ExtendedBinaryWriter writer) => throw new NotImplementedException();
-    public virtual void WriteBuffer() => Write(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
+    public virtual void FinishWrite(ExtendedBinaryWriter writer) { }
+    public virtual void WriteBuffer() { ExtendedBinaryWriter writer = new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness);  Write(writer); FinishWrite(writer); }
 }

@@ -20,6 +20,14 @@ A library with simple reading and writing function for various file formats in v
 
 # 🗂️ Contents 🗂️
 
+### Castle Siege
+
+|                      |              **Castle Siege**              |             |
+| :------------------: | :----------------------------------------: | :---------: |
+| **File format name** |                  **Info**                  | **Credits** |
+|    RDA (Archive)     | For easy reading and writing of .rda files |             |
+|  RDO (Model/Object)  | For easy reading and writing of .rdo files |             |
+
 ### Hedgehog Engine 1/2
 
 |                      |                                         **Sonic Frontiers**                                          |                                                               |
