@@ -89,27 +89,19 @@ public class ObjectWorld : IFile
                 int align = 1;
                 switch (field.type)
                 {
-                    case "bool":
+                    case "bool" or "uint8" or "int8":
                         align = 1;
                         break;
 
-                    case "float32":
+                    case "int16" or "uint16":
+                        align = 2;
+                        break;
+
+                    case "int32" or "uint32" or "float32":
                         align = 4;
                         break;
 
-                    case "uint8" or "int8":
-                        align = 1;
-                        break;
-
-                    case "uint32":
-                        align = 4;
-                        break;
-
-                    case "int32":
-                        align = 4;
-                        break;
-
-                    case "string":
+                    case "string" or "uint64" or "int64" or "float64" or "object_reference" or "vector2":
                         align = 8;
                         break;
 
@@ -120,16 +112,12 @@ public class ObjectWorld : IFile
                             align = GetAlignment(new() { alignment = null, type = field.subtype });
                         break;
 
-                    case "object_reference":
-                        align = 8;
-                        break;
-
-                    case "vector2":
-                        align = 8;
-                        break;
-
                     case "vector3":
                         align = 12;
+                        break;
+
+                    case "vector4":
+                        align = 16;
                         break;
 
                     default:
@@ -141,12 +129,16 @@ public class ObjectWorld : IFile
                                     align = 1;
                                     break;
 
-                                case "uint32":
+                                case "uint16" or "int16":
+                                    align = 2;
+                                    break;
+
+                                case "int32" or "uint32":
                                     align = 4;
                                     break;
 
-                                case "int32":
-                                    align = 4;
+                                case "int64" or "uint64":
+                                    align = 8;
                                     break;
                             }
                         }
@@ -184,8 +176,20 @@ public class ObjectWorld : IFile
                     value = reader.Read<float>();
                     break;
 
+                case "float64":
+                    value = reader.Read<double>();
+                    break;
+
                 case "uint8" or "int8":
                     value = reader.Read<byte>();
+                    break;
+
+                case "uint16":
+                    value = reader.Read<ushort>();
+                    break;
+
+                case "int16":
+                    value = reader.Read<short>();
                     break;
 
                 case "uint32":
@@ -194,6 +198,14 @@ public class ObjectWorld : IFile
 
                 case "int32":
                     value = reader.Read<int>();
+                    break;
+
+                case "uint64":
+                    value = reader.Read<ulong>();
+                    break;
+
+                case "int64":
+                    value = reader.Read<long>();
                     break;
 
                 case "string":
@@ -245,6 +257,10 @@ public class ObjectWorld : IFile
                     value = reader.Read<Vector3>();
                     break;
 
+                case "vector4":
+                    value = reader.Read<Vector4>();
+                    break;
+
                 default:
                     if (type.Contains("::"))
                     {
@@ -254,6 +270,28 @@ public class ObjectWorld : IFile
                             case "uint8" or "int8":
                                 eValue.Values = new();
                                 eValue.Selected = reader.Read<byte>();
+                                foreach (var x in template.enums[type].values)
+                                {
+                                    if (!eValue.Values.ContainsKey(x.Value.value))
+                                        eValue.Values.Add(x.Value.value, x.Key);
+                                }
+                                value = eValue;
+                                break;
+
+                            case "uint16":
+                                eValue.Values = new();
+                                eValue.Selected = reader.Read<ushort>();
+                                foreach (var x in template.enums[type].values)
+                                {
+                                    if (!eValue.Values.ContainsKey(x.Value.value))
+                                        eValue.Values.Add(x.Value.value, x.Key);
+                                }
+                                value = eValue;
+                                break;
+
+                            case "int16":
+                                eValue.Values = new();
+                                eValue.Selected = reader.Read<short>();
                                 foreach (var x in template.enums[type].values)
                                 {
                                     if (!eValue.Values.ContainsKey(x.Value.value))
@@ -276,6 +314,28 @@ public class ObjectWorld : IFile
                             case "int32":
                                 eValue.Values = new();
                                 eValue.Selected = reader.Read<int>();
+                                foreach (var x in template.enums[type].values)
+                                {
+                                    if (!eValue.Values.ContainsKey(x.Value.value))
+                                        eValue.Values.Add(x.Value.value, x.Key);
+                                }
+                                value = eValue;
+                                break;
+
+                            case "uint64":
+                                eValue.Values = new();
+                                eValue.Selected = (int)reader.Read<ulong>();
+                                foreach (var x in template.enums[type].values)
+                                {
+                                    if (!eValue.Values.ContainsKey(x.Value.value))
+                                        eValue.Values.Add(x.Value.value, x.Key);
+                                }
+                                value = eValue;
+                                break;
+
+                            case "int64":
+                                eValue.Values = new();
+                                eValue.Selected = (int)reader.Read<long>();
                                 foreach (var x in template.enums[type].values)
                                 {
                                     if (!eValue.Values.ContainsKey(x.Value.value))
