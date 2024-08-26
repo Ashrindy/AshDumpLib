@@ -78,7 +78,7 @@ public class ObjectWorld : IFile
         public Vector3 OffsetRotation = new(0, 0, 0);
         public List<Tag> Tags = new();
         public Dictionary<string, object> Parameters = new();
-        public Dictionary<string, object[]> paramArrays = new();
+        public Dictionary<Tuple<string, long>, object[]> paramArrays = new();
 
         public Template.TemplateJSON template;
 
@@ -395,12 +395,28 @@ public class ObjectWorld : IFile
                     writer.Write((byte)value);
                     break;
 
+                case "uint16":
+                    writer.Write((ushort)value);
+                    break;
+
+                case "int16":
+                    writer.Write((short)value);
+                    break;
+
                 case "uint32":
                     writer.Write((uint)value);
                     break;
 
                 case "int32":
                     writer.Write((int)value);
+                    break;
+
+                case "uint64":
+                    writer.Write((ulong)value);
+                    break;
+
+                case "int64":
+                    writer.Write((long)value);
                     break;
 
                 case "string":
@@ -411,11 +427,13 @@ public class ObjectWorld : IFile
                 case "array":
                     if (field.array_size == null)
                     {
-                        writer.AddOffset(ObjectName + ID.ToString() + field.name + "." + field.subtype);
+                        Random rnd = new();
+                        long r = rnd.NextInt64();
+                        writer.AddOffset(ObjectName + ID.ToString() + field.name + "." + field.subtype + r.ToString());
                         writer.Write((long)((object[])value).Length);
                         writer.Write((long)((object[])value).Length);
                         writer.WriteNulls(8);
-                        paramArrays.Add(field.name + "." + field.subtype, (object[])value);
+                        paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
                     }
                     else
                     {
@@ -436,6 +454,10 @@ public class ObjectWorld : IFile
                     writer.Write((Vector3)value);
                     break;
 
+                case "vector4":
+                    writer.Write((Vector4)value);
+                    break;
+
                 default:
                     if (field.type.Contains("::"))
                     {
@@ -443,6 +465,14 @@ public class ObjectWorld : IFile
                         {
                             case "uint8" or "int8":
                                 writer.Write((byte)((EnumValue)value).Selected);
+                                break;
+
+                            case "uint":
+                                writer.Write((ushort)((EnumValue)value).Selected);
+                                break;
+
+                            case "int16":
+                                writer.Write((short)((EnumValue)value).Selected);
                                 break;
 
                             case "uint32":
@@ -469,8 +499,11 @@ public class ObjectWorld : IFile
 
         void WriteStruct(BINAWriter writer, Dictionary<string, object> str, string strName)
         {
-            for(int i = 0; i < str.Count; i++)
-                WriteField(writer, template.structs[strName].fields[i], str.ElementAt(i).Value);
+            if (template.structs[strName].parent != null)
+                WriteStruct(writer, (Dictionary<string, object>)str[template.structs[strName].parent], template.structs[strName].parent);
+            int start = str.Keys.ToList().IndexOf(template.structs[strName].fields[0].name);
+            for(int i = start; i < str.Count; i++)
+                WriteField(writer, template.structs[strName].fields[i-start], str.ElementAt(i).Value);
         }
 
         public void Read(BINAReader reader)
@@ -516,6 +549,7 @@ public class ObjectWorld : IFile
             writer.WriteNulls(8);
             writer.WriteStringTableEntry(TypeName);
             writer.WriteStringTableEntry(ObjectName);
+            writer.Align(16);
             writer.Write(ID);
             writer.Write(ParentID);
             writer.Write(Position);
@@ -527,6 +561,7 @@ public class ObjectWorld : IFile
             writer.Write((long)Tags.Count);
             writer.WriteNulls(8);
             writer.AddOffset(ObjectName + ID.ToString() + "params");
+            writer.Align(16);
             writer.SetOffset(ObjectName + ID.ToString() + "tags");
             foreach (var i in Tags)
             {
@@ -543,10 +578,12 @@ public class ObjectWorld : IFile
             WriteStruct(writer, (Dictionary<string, object>)Parameters.ElementAt(0).Value, Parameters.ElementAt(0).Key);
             foreach (var i in paramArrays)
             {
-                writer.SetOffset(ObjectName + ID.ToString() + i.Key);
+                writer.SetOffset(ObjectName + ID.ToString() + i.Key.Item1 + i.Key.Item2.ToString());
                 foreach (var x in i.Value)
-                    WriteField(writer, new() { type = i.Key.Substring(i.Key.IndexOf('.') + 1) }, x);
+                    WriteField(writer, new() { type = i.Key.Item1.Substring(i.Key.Item1.IndexOf('.') + 1) }, x);
             }
+            foreach(var i in Tags)
+                i.FinishWrite(writer);
         }
 
         public class Tag : IBINASerializable
@@ -576,13 +613,12 @@ public class ObjectWorld : IFile
                 writer.Write((long)Data.Length);
                 writer.AddOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
                 writer.Align(16);
-                writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
-                writer.WriteArray(Data);
             }
 
             public void FinishWrite(BINAWriter writer)
             {
-                throw new NotImplementedException();
+                writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
+                writer.WriteArray(Data);
             }
         }
 
