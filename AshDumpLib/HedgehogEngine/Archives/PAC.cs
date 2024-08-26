@@ -312,6 +312,12 @@ public class PAC : Archive
                                     AddFile(densitySetting);
                                     break;
 
+                                case "gedit":
+                                    ObjectWorld objWld = new();
+                                    objWld.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(objWld);
+                                    break;
+
                                 case "level":
                                     Level level = new();
                                     level.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
