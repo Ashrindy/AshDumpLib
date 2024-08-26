@@ -1,9 +1,9 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using Amicitia.IO.Binary;
 using System.Numerics;
-
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using libHSON;
+using System.Drawing;
 using System.Reflection.PortableExecutable;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
@@ -65,6 +65,134 @@ public class ObjectWorld : IFile
         writer.Dispose();
     }
 
+
+    public Project ToHson()
+    {
+        Project project = new();
+        foreach(var i in Objects)
+        {
+            project.Objects.Add(CreateHsonObject(i));
+        }
+        return project;
+    }
+
+
+    libHSON.Object CreateHsonObject(Object i)
+    {
+        libHSON.Object? parentObj = null;
+        if (i.ParentID != Guid.Empty)
+        {
+            Object parentObject = Objects.Find(x => x.ID == i.ParentID);
+            parentObj = CreateHsonObject(parentObject);
+        }
+
+        libHSON.Object obj = new(i.ID, i.ObjectName, i.TypeName, position: i.Position, rotation: Helpers.ToQuaternion(i.Rotation), parent: parentObj);
+        ParameterCollection tags = new();
+        foreach (var x in i.Tags)
+        {
+            switch (x.Name)
+            {
+                case "RangeSpawning":
+                    ParameterCollection paramColl = new(2)
+                        {
+                            { "rangeIn", new(((float[])x.Data)[0]) },
+                            { "rangeOut", new(((float[])x.Data)[1]) }
+                        };
+                    tags.Add(x.Name, new(paramColl));
+                    break;
+            }
+
+        }
+        obj.LocalParameters.Add("tags", new(tags));
+
+        CreateHsonParameters(i.Parameters, ref obj);
+        return obj;
+    }
+
+    void CreateHsonParameters(Dictionary<string, object> parameter, ref libHSON.Object obj)
+    {
+        foreach(var x in parameter)
+            obj.LocalParameters.Add(x.Key, CreateHsonParameter((Dictionary<string, object>)x.Value));
+    }
+
+    Parameter CreateHsonParameter(Dictionary<string, object> parameter)
+    {
+        ParameterCollection paramColl = new();
+        foreach(var i in parameter)
+        {
+            Parameter param = new();
+            Type type = i.Value.GetType();
+            if (type == typeof(byte))
+                param = new(((byte)i.Value));
+            else if (type == typeof(bool))
+                param = new(((bool)i.Value));
+            else if (type == typeof(ushort))
+                param = new(((ushort)i.Value));
+            else if (type == typeof(short))
+                param = new(((short)i.Value));
+            else if (type == typeof(uint))
+                param = new(((uint)i.Value));
+            else if (type == typeof(int))
+                param = new(((int)i.Value));
+            else if (type == typeof(ulong))
+                param = new(((ulong)i.Value));
+            else if (type == typeof(long))
+                param = new(((long)i.Value));
+            else if (type == typeof(float))
+                param = new(((float)i.Value));
+            else if (type == typeof(double))
+                param = new(((double)i.Value));
+            else if (type == typeof(Object.EnumValue))
+                param = new(((Object.EnumValue)i.Value).Values[((Object.EnumValue)i.Value).Selected]);
+            else if (type == typeof(string))
+                param = new((string)i.Value);
+            else if (type == typeof(Dictionary<string, object>))
+                param = CreateHsonParameter((Dictionary<string, object>)i.Value);
+            else if (type == typeof(Guid))
+                param = new(((Guid)i.Value).ToString());
+            else if (type == typeof(object[]))
+            {
+                List<Parameter> paramArray = new();
+                foreach(var x in (object[])i.Value)
+                {
+                    Parameter paramItem = new();
+                    Type typee = x.GetType();
+                    if (typee == typeof(byte))
+                        paramItem = new(((byte)x));
+                    else if (typee == typeof(bool))
+                        paramItem = new(((bool)x));
+                    else if (typee == typeof(ushort))
+                        paramItem = new(((ushort)x));
+                    else if (typee == typeof(short))
+                        paramItem = new(((short)x));
+                    else if (typee == typeof(uint))
+                        paramItem = new(((uint)x));
+                    else if (typee == typeof(int))
+                        paramItem = new(((int)x));
+                    else if (typee == typeof(ulong))
+                        paramItem = new(((ulong)x));
+                    else if (typee == typeof(long))
+                        paramItem = new(((long)x));
+                    else if (typee == typeof(float))
+                        paramItem = new(((float)x));
+                    else if (typee == typeof(double))
+                        paramItem = new(((double)x));
+                    else if (typee == typeof(Object.EnumValue))
+                        paramItem = new(((Object.EnumValue)x).Values[((Object.EnumValue)x).Selected]);
+                    else if (typee == typeof(string))
+                        paramItem = new((string)x);
+                    else if (typee == typeof(Dictionary<string, object>))
+                        paramItem = CreateHsonParameter((Dictionary<string, object>)x);
+                    else if (typee == typeof(Guid))
+                        paramItem = new(((Guid)x).ToString());
+                    paramArray.Add(paramItem);
+                }
+                param = new(paramArray);
+            }
+            paramColl.Add(i.Key, param);
+        }
+        return new(paramColl);
+    }
 
     public class Object : IBINASerializable
     {
@@ -589,7 +717,7 @@ public class ObjectWorld : IFile
         public class Tag : IBINASerializable
         {
             public string Name = "";
-            public byte[] Data = new byte[0];
+            public object Data;
             public Object Owner = new();
 
             public void Read(BINAReader reader)
@@ -601,7 +729,16 @@ public class ObjectWorld : IFile
                     Name = reader.ReadStringTableEntry();
                     long size = reader.Read<long>();
                     long dataPtr = reader.Read<long>();
-                    Data = reader.ReadArrayAtOffset<byte>(dataPtr + 64, (int)size);
+                    switch (Name)
+                    {
+                        case "RangeSpawning":
+                            Data = reader.ReadArrayAtOffset<float>(dataPtr + 64, 2);
+                            break;
+
+                        default:
+                            Data = reader.ReadArrayAtOffset<byte>(dataPtr + 64, (int)size);
+                            break;
+                    }
                 });
             }
 
@@ -610,7 +747,16 @@ public class ObjectWorld : IFile
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name);
                 writer.WriteNulls(8);
                 writer.WriteStringTableEntry(Name);
-                writer.Write((long)Data.Length);
+                switch (Name)
+                {
+                    case "RangeSpawning":
+                        writer.Write((long)8);
+                        break;
+
+                    default:
+                        writer.Write((long)((byte[])Data).Length);
+                        break;
+                }
                 writer.AddOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
                 writer.Align(16);
             }
@@ -618,7 +764,16 @@ public class ObjectWorld : IFile
             public void FinishWrite(BINAWriter writer)
             {
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
-                writer.WriteArray(Data);
+                switch (Name)
+                {
+                    case "RangeSpawning":
+                        writer.WriteArray((float[])Data);
+                        break;
+
+                    default:
+                        writer.WriteArray((byte[])Data);
+                        break;
+                }
             }
         }
 
