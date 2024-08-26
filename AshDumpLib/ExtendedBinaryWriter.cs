@@ -14,6 +14,7 @@ namespace AshDumpLib
         public Dictionary<string, long> OffsetValues = new();
 
         public int GenericOffset = 0;
+        public int FileVersion = 0;
 
         public ExtendedBinaryWriter(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
         {

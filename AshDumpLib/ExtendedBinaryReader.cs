@@ -18,6 +18,7 @@ public class ExtendedBinaryReader : BinaryObjectReader
     public int stringTableOffset = 0;
     public int genericOffset = 0;
     public string Signature = "";
+    public int FileVersion = 0;
 
     public ExtendedBinaryReader(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
     {

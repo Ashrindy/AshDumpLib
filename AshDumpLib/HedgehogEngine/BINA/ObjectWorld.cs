@@ -18,9 +18,12 @@ public class ObjectWorld : IFile
     public string TemplateFilePath = "frontiers.json";
     Template.TemplateJSON template;
 
+    public int FileVersion = 3;
+
     public ObjectWorld() { }
 
     public ObjectWorld(string filename) => Open(filename);
+    public ObjectWorld(string filename, string templateFilePath = "frontiers.json") { TemplateFilePath = templateFilePath; Open(filename); }
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
     public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }
@@ -28,6 +31,17 @@ public class ObjectWorld : IFile
     public void Read(BINAReader reader)
     {
         template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
+        switch (template.format)
+        {
+            case "gedit_v2":
+                FileVersion = 2;
+                break;
+
+            case "gedit_v3":
+                FileVersion = 3;
+                break;
+        }
+        reader.FileVersion = FileVersion;
         reader.ReadHeader();
         reader.Skip(16);
         long dataPtr = reader.Read<long>();
@@ -47,6 +61,17 @@ public class ObjectWorld : IFile
     public void Write(BINAWriter writer)
     {
         template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
+        switch (template.format)
+        {
+            case "gedit_v2":
+                FileVersion = 2;
+                break;
+
+            case "gedit_v3":
+                FileVersion = 3;
+                break;
+        }
+        writer.FileVersion = FileVersion;
         writer.WriteHeader();
         writer.WriteNulls(16);
         writer.AddOffset("dataPtr");
@@ -66,134 +91,6 @@ public class ObjectWorld : IFile
     }
 
 
-    public Project ToHson()
-    {
-        Project project = new();
-        foreach(var i in Objects)
-        {
-            project.Objects.Add(CreateHsonObject(i));
-        }
-        return project;
-    }
-
-
-    libHSON.Object CreateHsonObject(Object i)
-    {
-        libHSON.Object? parentObj = null;
-        if (i.ParentID != Guid.Empty)
-        {
-            Object parentObject = Objects.Find(x => x.ID == i.ParentID);
-            parentObj = CreateHsonObject(parentObject);
-        }
-
-        libHSON.Object obj = new(i.ID, i.ObjectName, i.TypeName, position: i.Position, rotation: Helpers.ToQuaternion(i.Rotation), parent: parentObj);
-        ParameterCollection tags = new();
-        foreach (var x in i.Tags)
-        {
-            switch (x.Name)
-            {
-                case "RangeSpawning":
-                    ParameterCollection paramColl = new(2)
-                        {
-                            { "rangeIn", new(((float[])x.Data)[0]) },
-                            { "rangeOut", new(((float[])x.Data)[1]) }
-                        };
-                    tags.Add(x.Name, new(paramColl));
-                    break;
-            }
-
-        }
-        obj.LocalParameters.Add("tags", new(tags));
-
-        CreateHsonParameters(i.Parameters, ref obj);
-        return obj;
-    }
-
-    void CreateHsonParameters(Dictionary<string, object> parameter, ref libHSON.Object obj)
-    {
-        foreach(var x in parameter)
-            obj.LocalParameters.Add(x.Key, CreateHsonParameter((Dictionary<string, object>)x.Value));
-    }
-
-    Parameter CreateHsonParameter(Dictionary<string, object> parameter)
-    {
-        ParameterCollection paramColl = new();
-        foreach(var i in parameter)
-        {
-            Parameter param = new();
-            Type type = i.Value.GetType();
-            if (type == typeof(byte))
-                param = new(((byte)i.Value));
-            else if (type == typeof(bool))
-                param = new(((bool)i.Value));
-            else if (type == typeof(ushort))
-                param = new(((ushort)i.Value));
-            else if (type == typeof(short))
-                param = new(((short)i.Value));
-            else if (type == typeof(uint))
-                param = new(((uint)i.Value));
-            else if (type == typeof(int))
-                param = new(((int)i.Value));
-            else if (type == typeof(ulong))
-                param = new(((ulong)i.Value));
-            else if (type == typeof(long))
-                param = new(((long)i.Value));
-            else if (type == typeof(float))
-                param = new(((float)i.Value));
-            else if (type == typeof(double))
-                param = new(((double)i.Value));
-            else if (type == typeof(Object.EnumValue))
-                param = new(((Object.EnumValue)i.Value).Values[((Object.EnumValue)i.Value).Selected]);
-            else if (type == typeof(string))
-                param = new((string)i.Value);
-            else if (type == typeof(Dictionary<string, object>))
-                param = CreateHsonParameter((Dictionary<string, object>)i.Value);
-            else if (type == typeof(Guid))
-                param = new(((Guid)i.Value).ToString());
-            else if (type == typeof(object[]))
-            {
-                List<Parameter> paramArray = new();
-                foreach(var x in (object[])i.Value)
-                {
-                    Parameter paramItem = new();
-                    Type typee = x.GetType();
-                    if (typee == typeof(byte))
-                        paramItem = new(((byte)x));
-                    else if (typee == typeof(bool))
-                        paramItem = new(((bool)x));
-                    else if (typee == typeof(ushort))
-                        paramItem = new(((ushort)x));
-                    else if (typee == typeof(short))
-                        paramItem = new(((short)x));
-                    else if (typee == typeof(uint))
-                        paramItem = new(((uint)x));
-                    else if (typee == typeof(int))
-                        paramItem = new(((int)x));
-                    else if (typee == typeof(ulong))
-                        paramItem = new(((ulong)x));
-                    else if (typee == typeof(long))
-                        paramItem = new(((long)x));
-                    else if (typee == typeof(float))
-                        paramItem = new(((float)x));
-                    else if (typee == typeof(double))
-                        paramItem = new(((double)x));
-                    else if (typee == typeof(Object.EnumValue))
-                        paramItem = new(((Object.EnumValue)x).Values[((Object.EnumValue)x).Selected]);
-                    else if (typee == typeof(string))
-                        paramItem = new((string)x);
-                    else if (typee == typeof(Dictionary<string, object>))
-                        paramItem = CreateHsonParameter((Dictionary<string, object>)x);
-                    else if (typee == typeof(Guid))
-                        paramItem = new(((Guid)x).ToString());
-                    paramArray.Add(paramItem);
-                }
-                param = new(paramArray);
-            }
-            paramColl.Add(i.Key, param);
-        }
-        return new(paramColl);
-    }
-
     public class Object : IBINASerializable
     {
         public Guid ID = Guid.Empty;
@@ -206,7 +103,7 @@ public class ObjectWorld : IFile
         public Vector3 OffsetRotation = new(0, 0, 0);
         public List<Tag> Tags = new();
         public Dictionary<string, object> Parameters = new();
-        public Dictionary<Tuple<string, long>, object[]> paramArrays = new();
+        Dictionary<Tuple<string, long>, object[]> paramArrays = new();
 
         public Template.TemplateJSON template;
 
@@ -289,6 +186,7 @@ public class ObjectWorld : IFile
                 return (int)field.alignment;
         }
 
+        #region ReadingParameters
         object ReadField(BINAReader reader, string type, Template.StructTemplateField field, Dictionary<string, object> parent)
         {
             object value = null;
@@ -348,12 +246,10 @@ public class ObjectWorld : IFile
                     if (field.array_size == null)
                     {
                         arrayPtr = reader.Read<long>();
-                        if(arrayPtr == 0)
-                            arrayPtr = reader.Read<long>();
                         arrayLength = reader.Read<long>();
                         long arrayLength2 = reader.Read<long>();
                         reader.Skip(8);
-                        if(arrayLength > 0)
+                        if(arrayLength > 0 && arrayPtr > 0)
                         {
                             arrayValue = new object[arrayLength];
                             reader.ReadAtOffset(arrayPtr + 64, () =>
@@ -499,12 +395,9 @@ public class ObjectWorld : IFile
             }
             return parameters;
         }
+        #endregion
 
-        void LoopParentsRead(BINAReader reader, Template.StructTemplate str, string structName)
-        {
-            Parameters.Add(structName, ReadStruct(reader, str, structName));
-        }
-
+        #region WritingParameters
         void WriteField(BINAWriter writer, Template.StructTemplateField field, object value)
         {
             writer.Align(GetAlignment(field));
@@ -633,6 +526,7 @@ public class ObjectWorld : IFile
             for(int i = start; i < str.Count; i++)
                 WriteField(writer, template.structs[strName].fields[i-start], str.ElementAt(i).Value);
         }
+        #endregion
 
         public void Read(BINAReader reader)
         {
@@ -641,10 +535,27 @@ public class ObjectWorld : IFile
             {
                 reader.Skip(8);
                 TypeName = reader.ReadStringTableEntry();
-                ObjectName = reader.ReadStringTableEntry();
-                reader.Align(16);
-                ID = reader.Read<Guid>();
-                ParentID = reader.Read<Guid>();
+                if (reader.FileVersion == 3)
+                {
+                    ObjectName = reader.ReadStringTableEntry();
+                    reader.Skip(8);
+                    ID = reader.Read<Guid>();
+                    ParentID = reader.Read<Guid>();
+                }
+                else if(reader.FileVersion == 2)
+                {
+                    ObjectName = reader.ReadStringTableEntry();
+                    byte[] id = new byte[16];
+                    byte[] idRaw = reader.ReadArray<byte>(4);
+                    for(int i = 0; i < 4; i++)
+                        idRaw.CopyTo(id, i);
+                    ID = new(id);
+                    byte[] parentid = new byte[16];
+                    byte[] parentidRaw = reader.ReadArray<byte>(4);
+                    for (int i = 0; i < 4; i++)
+                        parentidRaw.CopyTo(parentid, i);
+                    ParentID = new(parentid);
+                }
                 Position = reader.Read<Vector3>();
                 Rotation = reader.Read<Vector3>();
                 OffsetPosition = reader.Read<Vector3>();
@@ -666,7 +577,7 @@ public class ObjectWorld : IFile
                 long paramPtr = reader.Read<long>();
                 reader.ReadAtOffset(paramPtr + 64, () =>
                 {
-                    LoopParentsRead(reader, objTmp, template.objects[TypeName].structs);
+                    Parameters.Add(template.objects[TypeName].structs, ReadStruct(reader, objTmp, template.objects[TypeName].structs));
                 });
             });
         }
@@ -676,10 +587,19 @@ public class ObjectWorld : IFile
             writer.SetOffset(ObjectName + ID.ToString());
             writer.WriteNulls(8);
             writer.WriteStringTableEntry(TypeName);
-            writer.WriteStringTableEntry(ObjectName);
-            writer.Align(16);
-            writer.Write(ID);
-            writer.Write(ParentID);
+            if (writer.FileVersion == 3)
+            {
+                writer.WriteStringTableEntry(ObjectName);
+                writer.WriteNulls(8);
+                writer.Write(ID);
+                writer.Write(ParentID);
+            }
+            else if(writer.FileVersion == 2)
+            {
+                writer.WriteStringTableEntry(ObjectName);
+                writer.WriteArray(new byte[4] { ID.ToByteArray()[0], ID.ToByteArray()[1], ID.ToByteArray()[2], ID.ToByteArray()[3]});
+                writer.WriteArray(new byte[4] { ParentID.ToByteArray()[0], ParentID.ToByteArray()[1], ParentID.ToByteArray()[2], ParentID.ToByteArray()[3]});
+            }
             writer.Write(Position);
             writer.Write(Rotation);
             writer.Write(OffsetPosition);
@@ -784,8 +704,7 @@ public class ObjectWorld : IFile
         }
     }
 
-
-
+    #region TemplateReader
     public static class Template
     {
         [Serializable]
@@ -841,4 +760,135 @@ public class ObjectWorld : IFile
             public string? category;
         }
     }
+    #endregion
+
+    #region HSON
+    public Project ToHson()
+    {
+        Project project = new();
+        foreach (var i in Objects)
+        {
+            project.Objects.Add(CreateHsonObject(i));
+        }
+        return project;
+    }
+
+
+    libHSON.Object CreateHsonObject(Object i)
+    {
+        libHSON.Object? parentObj = null;
+        if (i.ParentID != Guid.Empty)
+        {
+            Object parentObject = Objects.Find(x => x.ID == i.ParentID);
+            parentObj = CreateHsonObject(parentObject);
+        }
+
+        libHSON.Object obj = new(i.ID, i.ObjectName, i.TypeName, position: i.Position, rotation: Helpers.ToQuaternion(i.Rotation), parent: parentObj);
+        ParameterCollection tags = new();
+        foreach (var x in i.Tags)
+        {
+            switch (x.Name)
+            {
+                case "RangeSpawning":
+                    ParameterCollection paramColl = new(2)
+                        {
+                            { "rangeIn", new(((float[])x.Data)[0]) },
+                            { "rangeOut", new(((float[])x.Data)[1]) }
+                        };
+                    tags.Add(x.Name, new(paramColl));
+                    break;
+            }
+
+        }
+        obj.LocalParameters.Add("tags", new(tags));
+
+        CreateHsonParameters(i.Parameters, ref obj);
+        return obj;
+    }
+
+    void CreateHsonParameters(Dictionary<string, object> parameter, ref libHSON.Object obj)
+    {
+        foreach (var x in parameter)
+            obj.LocalParameters.Add(x.Key, CreateHsonParameter((Dictionary<string, object>)x.Value));
+    }
+
+    Parameter CreateHsonParameter(Dictionary<string, object> parameter)
+    {
+        ParameterCollection paramColl = new();
+        foreach (var i in parameter)
+        {
+            Parameter param = new();
+            Type type = i.Value.GetType();
+            if (type == typeof(byte))
+                param = new(((byte)i.Value));
+            else if (type == typeof(bool))
+                param = new(((bool)i.Value));
+            else if (type == typeof(ushort))
+                param = new(((ushort)i.Value));
+            else if (type == typeof(short))
+                param = new(((short)i.Value));
+            else if (type == typeof(uint))
+                param = new(((uint)i.Value));
+            else if (type == typeof(int))
+                param = new(((int)i.Value));
+            else if (type == typeof(ulong))
+                param = new(((ulong)i.Value));
+            else if (type == typeof(long))
+                param = new(((long)i.Value));
+            else if (type == typeof(float))
+                param = new(((float)i.Value));
+            else if (type == typeof(double))
+                param = new(((double)i.Value));
+            else if (type == typeof(Object.EnumValue))
+                param = new(((Object.EnumValue)i.Value).Values[((Object.EnumValue)i.Value).Selected]);
+            else if (type == typeof(string))
+                param = new((string)i.Value);
+            else if (type == typeof(Dictionary<string, object>))
+                param = CreateHsonParameter((Dictionary<string, object>)i.Value);
+            else if (type == typeof(Guid))
+                param = new(((Guid)i.Value).ToString());
+            else if (type == typeof(object[]))
+            {
+                List<Parameter> paramArray = new();
+                foreach (var x in (object[])i.Value)
+                {
+                    Parameter paramItem = new();
+                    Type typee = x.GetType();
+                    if (typee == typeof(byte))
+                        paramItem = new(((byte)x));
+                    else if (typee == typeof(bool))
+                        paramItem = new(((bool)x));
+                    else if (typee == typeof(ushort))
+                        paramItem = new(((ushort)x));
+                    else if (typee == typeof(short))
+                        paramItem = new(((short)x));
+                    else if (typee == typeof(uint))
+                        paramItem = new(((uint)x));
+                    else if (typee == typeof(int))
+                        paramItem = new(((int)x));
+                    else if (typee == typeof(ulong))
+                        paramItem = new(((ulong)x));
+                    else if (typee == typeof(long))
+                        paramItem = new(((long)x));
+                    else if (typee == typeof(float))
+                        paramItem = new(((float)x));
+                    else if (typee == typeof(double))
+                        paramItem = new(((double)x));
+                    else if (typee == typeof(Object.EnumValue))
+                        paramItem = new(((Object.EnumValue)x).Values[((Object.EnumValue)x).Selected]);
+                    else if (typee == typeof(string))
+                        paramItem = new((string)x);
+                    else if (typee == typeof(Dictionary<string, object>))
+                        paramItem = CreateHsonParameter((Dictionary<string, object>)x);
+                    else if (typee == typeof(Guid))
+                        paramItem = new(((Guid)x).ToString());
+                    paramArray.Add(paramItem);
+                }
+                param = new(paramArray);
+            }
+            paramColl.Add(i.Key, param);
+        }
+        return new(paramColl);
+    }
+    #endregion
 }
