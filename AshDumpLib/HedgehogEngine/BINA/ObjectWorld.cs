@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using libHSON;
 using System.Drawing;
 using System.Reflection.PortableExecutable;
+using System.Diagnostics;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
@@ -31,17 +32,9 @@ public class ObjectWorld : IFile
     public void Read(BINAReader reader)
     {
         template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
-        switch (template.format)
-        {
-            case "gedit_v2":
-                FileVersion = 2;
-                break;
-
-            case "gedit_v3":
-                FileVersion = 3;
-                break;
-        }
+        FileVersion = Template.GetVersionFromTemplate(template.format);
         reader.FileVersion = FileVersion;
+
         reader.ReadHeader();
         reader.Skip(16);
         long dataPtr = reader.Read<long>();
@@ -61,17 +54,9 @@ public class ObjectWorld : IFile
     public void Write(BINAWriter writer)
     {
         template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
-        switch (template.format)
-        {
-            case "gedit_v2":
-                FileVersion = 2;
-                break;
-
-            case "gedit_v3":
-                FileVersion = 3;
-                break;
-        }
+        FileVersion = Template.GetVersionFromTemplate(template.format);
         writer.FileVersion = FileVersion;
+
         writer.WriteHeader();
         writer.WriteNulls(16);
         writer.AddOffset("dataPtr");
@@ -107,7 +92,7 @@ public class ObjectWorld : IFile
 
         public Template.TemplateJSON template;
 
-        int GetAlignment(Template.StructTemplateField field)
+        int GetAlignment(Template.StructTemplateField field, int fileVersion)
         {
             if(field.alignment == null)
             {
@@ -126,15 +111,22 @@ public class ObjectWorld : IFile
                         align = 4;
                         break;
 
-                    case "string" or "uint64" or "int64" or "float64" or "object_reference" or "vector2":
+                    case "string" or "uint64" or "int64" or "float64" or "vector2":
                         align = 8;
+                        break;
+
+                    case "object_reference":
+                        if (fileVersion == 2)
+                            align = 4;
+                        else if(fileVersion == 3)
+                            align = 8;
                         break;
 
                     case "array":
                         if(field.array_size == null)
                             align = 8;
                         else
-                            align = GetAlignment(new() { alignment = null, type = field.subtype });
+                            align = GetAlignment(new() { alignment = null, type = field.subtype }, fileVersion);
                         break;
 
                     case "vector3":
@@ -172,7 +164,7 @@ public class ObjectWorld : IFile
                             int largestAlignStr = 0;
                             foreach (var i in template.structs[field.type].fields)
                             {
-                                align = GetAlignment(i);
+                                align = GetAlignment(i, fileVersion);
                                 if (align > largestAlignStr)
                                     largestAlignStr = align;
                             }
@@ -190,7 +182,7 @@ public class ObjectWorld : IFile
         object ReadField(BINAReader reader, string type, Template.StructTemplateField field, Dictionary<string, object> parent)
         {
             object value = null;
-            reader.Align(GetAlignment(field));
+            reader.Align(GetAlignment(field, reader.FileVersion));
             bool isStruct = false;
             switch (type)
             {
@@ -270,7 +262,15 @@ public class ObjectWorld : IFile
                     break;
 
                 case "object_reference":
-                    value = reader.Read<Guid>();
+                    if(reader.FileVersion == 2)
+                    {
+                        byte[] rawValue = reader.ReadArray<byte>(4);
+                        byte[] rawId = new byte[16];
+                        rawValue.CopyTo(rawId, 0);
+                        value = new Guid(rawId);
+                    }
+                    else if(reader.FileVersion == 3)
+                        value = reader.Read<Guid>();
                     break;
 
                 case "vector2":
@@ -379,7 +379,7 @@ public class ObjectWorld : IFile
             if (field.alignment != null && !isStruct)
                 reader.Align((int)field.alignment);
             else if(isStruct)
-                reader.Align(GetAlignment(field));
+                reader.Align(GetAlignment(field, reader.FileVersion));
             return value;
         }
 
@@ -400,7 +400,7 @@ public class ObjectWorld : IFile
         #region WritingParameters
         void WriteField(BINAWriter writer, Template.StructTemplateField field, object value)
         {
-            writer.Align(GetAlignment(field));
+            writer.Align(GetAlignment(field, writer.FileVersion));
             bool isStruct = false;
             switch (field.type)
             {
@@ -464,7 +464,10 @@ public class ObjectWorld : IFile
                     break;
 
                 case "object_reference":
-                    writer.Write((Guid)value);
+                    if (writer.FileVersion == 2)
+                        writer.Write((Guid)value);
+                    else if (writer.FileVersion == 3)
+                        writer.WriteArray(new byte[4] { ((Guid)value).ToByteArray()[0], ((Guid)value).ToByteArray()[1], ((Guid)value).ToByteArray()[2], ((Guid)value).ToByteArray()[3] });
                     break;
 
                 case "vector2":
@@ -515,7 +518,7 @@ public class ObjectWorld : IFile
             if (field.alignment != null && !isStruct)
                 writer.Align((int)field.alignment);
             else if (isStruct)
-                writer.Align(GetAlignment(field));
+                writer.Align(GetAlignment(field, writer.FileVersion));
         }
 
         void WriteStruct(BINAWriter writer, Dictionary<string, object> str, string strName)
@@ -547,13 +550,11 @@ public class ObjectWorld : IFile
                     ObjectName = reader.ReadStringTableEntry();
                     byte[] id = new byte[16];
                     byte[] idRaw = reader.ReadArray<byte>(4);
-                    for(int i = 0; i < 4; i++)
-                        idRaw.CopyTo(id, i);
+                    idRaw.CopyTo(id, 0);
                     ID = new(id);
                     byte[] parentid = new byte[16];
                     byte[] parentidRaw = reader.ReadArray<byte>(4);
-                    for (int i = 0; i < 4; i++)
-                        parentidRaw.CopyTo(parentid, i);
+                    parentidRaw.CopyTo(parentid, 0);
                     ParentID = new(parentid);
                 }
                 Position = reader.Read<Vector3>();
@@ -707,6 +708,26 @@ public class ObjectWorld : IFile
     #region TemplateReader
     public static class Template
     {
+        public static int GetVersionFromTemplate(string version)
+        {
+            int ver = 3;
+            switch(version)
+            {
+                case "gedit_v2":
+                    ver = 2;
+                    break;
+
+                case "gedit_v3":
+                    ver = 3;
+                    break;
+
+                default:
+                    throw new NotImplementedException();
+                    break;
+            }
+            return ver;
+        }
+
         [Serializable]
         public class TemplateJSON
         {
