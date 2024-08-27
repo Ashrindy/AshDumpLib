@@ -3,7 +3,7 @@ using Amicitia.IO.Binary;
 using Amicitia.IO.Streams;
 using System.Text;
 
-namespace AshDumpLib.HedgehogEngine.Anim;
+namespace AshDumpLib.HedgehogEngine.Mirage.Anim;
 
 public class AnimWriter : ExtendedBinaryWriter
 {
@@ -89,7 +89,7 @@ public class AnimWriter : ExtendedBinaryWriter
         FixPadding(4);
 
         //Gets string size by subtracting the current position from the string table pointer
-        int stringSize = ((int)Position - GenericOffset) - (int)GetOffsetValue("strings");
+        int stringSize = (int)Position - GenericOffset - (int)GetOffsetValue("strings");
 
         //Writes string size
         WriteAt(stringSize, GetOffset("strings") + 4);
@@ -114,10 +114,10 @@ public class AnimWriter : ExtendedBinaryWriter
             Write(x);
 
         //Writes offsets
-        foreach(var i in Offsets)
+        foreach (var i in Offsets)
             if (OffsetsWrite[i.Key])
                 //Sometimes the .*-anim files seem to address the issue that's been made by offseting the offsets by 4 for some reason
-                if(AnimationType == AnimType.UVAnimation || AnimationType == AnimType.VisibilityAnimation)
+                if (AnimationType == AnimType.UVAnimation || AnimationType == AnimType.VisibilityAnimation)
                     Write((int)i.Value - GenericOffset);
                 else
                     Write((int)i.Value - GenericOffset - 4);

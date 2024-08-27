@@ -1,6 +1,6 @@
 ﻿using Amicitia.IO.Binary;
-using AshDumpLib.HedgehogEngine.Anim;
 using AshDumpLib.HedgehogEngine.BINA;
+using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.Helpers.Archives;
 using K4os.Compression.LZ4;
 

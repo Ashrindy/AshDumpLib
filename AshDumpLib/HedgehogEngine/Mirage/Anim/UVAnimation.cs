@@ -1,7 +1,7 @@
 ﻿using Amicitia.IO.Binary;
 using AshDumpLib.Helpers.Archives;
 
-namespace AshDumpLib.HedgehogEngine.Anim;
+namespace AshDumpLib.HedgehogEngine.Mirage.Anim;
 
 //Research by Kwasior!
 
@@ -78,7 +78,7 @@ public class UVAnimation : IFile
         writer.SetOffset("uvs");
         writer.WriteStringTableEntry(MaterialName);
         writer.WriteStringTableEntry(TextureName);
-        
+
         writer.Write(UVs.Count);
 
         foreach (var uv in UVs)

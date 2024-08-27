@@ -2,7 +2,7 @@
 using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
-namespace AshDumpLib.HedgehogEngine.Anim;
+namespace AshDumpLib.HedgehogEngine.Mirage.Anim;
 
 //Research by Kwasior!
 
@@ -73,10 +73,10 @@ public class CameraAnimation : IFile
         writer.SetOffset("cameras");
         writer.Write(Cameras.Count);
 
-        foreach(var camera in Cameras)
+        foreach (var camera in Cameras)
             writer.AddOffset(camera.Name + "ptr");
-            
-        foreach(var camera in Cameras)
+
+        foreach (var camera in Cameras)
             camera.Write(writer, keys);
 
         int cameraSize = (int)(writer.Position - writer.GetOffsetValue("cameras")) - writer.GenericOffset;
@@ -84,7 +84,7 @@ public class CameraAnimation : IFile
 
         writer.SetOffset("keyframes");
 
-        foreach(var key in keys)
+        foreach (var key in keys)
         {
             writer.Write(key.Frame);
             writer.Write(key.Value);

@@ -1,4 +1,4 @@
-﻿namespace AshDumpLib.HedgehogEngine.Anim;
+﻿namespace AshDumpLib.HedgehogEngine.Mirage.Anim;
 
 public struct Keyframe
 {
