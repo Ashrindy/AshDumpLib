@@ -8,7 +8,7 @@ namespace AshDumpLib
     public class ExtendedBinaryWriter : BinaryObjectWriter
     {
         public Dictionary<long, long> StringTableOffsets = new();
-        public List<char> StringTable = new();
+        public string StringTable = "";
         public Dictionary<string, long> Offsets = new();
         public Dictionary<string, bool> OffsetsWrite = new();
         public Dictionary<string, long> OffsetValues = new();
@@ -33,18 +33,32 @@ namespace AshDumpLib
             //Adds offset to the OffsetTable
             Offsets.Add(entry + "." + Position, Position - GenericOffset);
 
-            //Adds offset to the StringTableOffset for later correction
-            StringTableOffsets.Add(Position, StringTable.Count);
+            if (!StringTable.Contains(entry))
+            {
+                //Adds offset to the StringTableOffset for later correction
+                StringTableOffsets.Add(Position, StringTable.Length);
 
-            //Adds offset to the OffsetsWrite dictionary
-            OffsetsWrite.Add(entry + "." + Position, true);
+                //Adds offset to the OffsetsWrite dictionary
+                OffsetsWrite.Add(entry + "." + Position, true);
 
-            //Writes the temporary offset in the StringTable
-            Write<long>(StringTable.Count);
-            foreach (var i in entry.ToCharArray())
-                StringTable.Add(i);
+                //Writes the temporary offset in the StringTable
+                Write<long>(StringTable.Length);
+                foreach (var i in entry.ToCharArray())
+                    StringTable += i;
 
-            StringTable.Add('\0');
+                StringTable += '\0';
+            }
+            else
+            {
+                //Adds offset to the StringTableOffset for later correction
+                StringTableOffsets.Add(Position, StringTable.IndexOf(entry));
+
+                //Adds offset to the OffsetsWrite dictionary
+                OffsetsWrite.Add(entry + "." + Position, true);
+
+                //Writes the temporary offset in the StringTable
+                Write<long>(StringTable.IndexOf(entry));
+            }
         }
 
         public void WriteNulls(int amount)

@@ -42,10 +42,10 @@ public class AnimWriter : ExtendedBinaryWriter
         OffsetsWrite.Add(entry, false);
 
         //Writes the offset in the StringTable
-        Write(StringTable.Count);
+        Write(StringTable.Length);
         foreach (var i in entry.ToCharArray())
-            StringTable.Add(i);
-        StringTable.Add('\0');
+            StringTable += i;
+        StringTable += '\0';
     }
 
     public override void SetOffset(string id)
