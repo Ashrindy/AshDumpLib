@@ -6,6 +6,7 @@ using libHSON;
 using System.Drawing;
 using System.Reflection.PortableExecutable;
 using System.Diagnostics;
+using System.Linq;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
@@ -624,12 +625,15 @@ public class ObjectWorld : IFile
         public void FinishWrite(BINAWriter writer)
         {
             writer.SetOffset(ObjectName + ID.ToString() + "params");
-            WriteStruct(writer, (Dictionary<string, object>)Parameters.ElementAt(0).Value, Parameters.ElementAt(0).Key);
-            foreach (var i in paramArrays)
+            if(Parameters.Count > 0)
             {
-                writer.SetOffset(ObjectName + ID.ToString() + i.Key.Item1 + i.Key.Item2.ToString());
-                foreach (var x in i.Value)
-                    WriteField(writer, new() { type = i.Key.Item1.Substring(i.Key.Item1.IndexOf('.') + 1) }, x);
+                WriteStruct(writer, (Dictionary<string, object>)Parameters.ElementAt(0).Value, Parameters.ElementAt(0).Key);
+                foreach (var i in paramArrays)
+                {
+                    writer.SetOffset(ObjectName + ID.ToString() + i.Key.Item1 + i.Key.Item2.ToString());
+                    foreach (var x in i.Value)
+                        WriteField(writer, new() { type = i.Key.Item1.Substring(i.Key.Item1.IndexOf('.') + 1) }, x);
+                }
             }
             foreach(var i in Tags)
                 i.FinishWrite(writer);
@@ -784,6 +788,8 @@ public class ObjectWorld : IFile
     #endregion
 
     #region HSON
+
+    #region ToHson
     public Project ToHson()
     {
         Project project = new();
@@ -911,5 +917,112 @@ public class ObjectWorld : IFile
         }
         return new(paramColl);
     }
+    #endregion
+
+    #region FromHson
+    public static ObjectWorld ToGedit(Project project, string templateFilePath) 
+    {
+        Template.TemplateJSON template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(templateFilePath));
+        ObjectWorld gedit = new();
+        gedit.TemplateFilePath = templateFilePath;
+        gedit.template = template;
+        foreach (var i in project.Objects)
+            gedit.Objects.Add(CreateGeditObject(i, template));
+        return gedit;
+    }
+
+    static Object CreateGeditObject(libHSON.Object i, Template.TemplateJSON template)
+    {
+        Object obj = new();
+        obj.template = template;
+        obj.ObjectName = i.Name;
+        obj.TypeName = i.Type;
+        obj.Position = i.LocalPosition;
+        obj.Rotation = Helpers.ToEulerAngles(i.LocalRotation);
+        obj.OffsetPosition = i.LocalPosition;
+        obj.OffsetRotation = Helpers.ToEulerAngles(i.LocalRotation);
+        foreach (var x in i.LocalParameters["tags"].ValueObject)
+        {
+            Object.Tag tag = new() { Name = x.Key };
+            switch (x.Key)
+            {
+                case "RangeSpawning":
+                    tag.Data = new float[2] { (float)x.Value.ValueObject["rangeIn"].ValueFloatingPoint, (float)x.Value.ValueObject["rangeOut"].ValueFloatingPoint };
+                    break;
+            }
+            obj.Tags.Add(tag);
+        }
+        obj.Parameters = CreateGeditParameter(new(i.LocalParameters.ElementAt(1).Key, i.LocalParameters.ElementAt(1).Value), template);
+        return obj;
+    }
+
+    static Dictionary<string, object> CreateGeditParameter(Tuple<string, Parameter> param, Template.TemplateJSON template)
+    {
+        Dictionary<string, object> prm = new()
+        {
+            { param.Item1, CreateGeditParameterObject(new(param.Item1, param.Item2), template, param.Item1) }
+        };
+        return prm;
+    }
+
+    static object CreateGeditParameterObject(Tuple<string, Parameter> param, Template.TemplateJSON template, string strName)
+    {
+        object value = null;
+        switch (param.Item2.Type)
+        {
+            case ParameterType.Boolean:
+                value = param.Item2.ValueBoolean;
+                break;
+
+            case ParameterType.SignedInteger:
+                value = param.Item2.ValueSignedInteger;
+                break;
+
+            case ParameterType.UnsignedInteger: 
+                value = param.Item2.ValueUnsignedInteger; 
+                break;
+
+            case ParameterType.FloatingPoint:
+                value = param.Item2.ValueFloatingPoint; 
+                break;
+
+            case ParameterType.String:
+                if (template.structs.ContainsKey(strName))
+                {
+                    foreach(var i in template.structs[strName].fields)
+                    {
+                        if (i.name == param.Item1 && template.enums.ContainsKey(i.type))
+                        {
+                            Object.EnumValue eVal = new();
+                            eVal.Values = new();
+                            foreach (var x in template.enums[i.type].values)
+                            {
+                                eVal.Values.Add(x.Value.value, x.Key);
+                            }
+                            eVal.Selected = template.enums[i.type].values[param.Item2.ValueString].value;
+                        }
+                    }
+                }
+                else
+                    value = param.Item2.ValueString; 
+                break;
+
+            case ParameterType.Array:
+                value = new object[param.Item2.ValueArray.Count];
+                for(int i = 0; i < param.Item2.ValueArray.Count; i++)
+                    ((object[])value)[i] = CreateGeditParameterObject(new(param.Item1, param.Item2.ValueArray[i]), template, strName);
+                break;
+
+            case ParameterType.Object:
+                Dictionary<string, object> str = new();
+                foreach (var i in param.Item2.ValueObject)
+                    str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), template, i.Key));
+                value = str;
+                break;
+        }
+        return value;
+    }
+    #endregion
+
     #endregion
 }
