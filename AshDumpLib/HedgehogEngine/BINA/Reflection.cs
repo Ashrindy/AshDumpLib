@@ -3,6 +3,8 @@ using Newtonsoft.Json;
 using System.Numerics;
 using Amicitia.IO.Binary;
 
+using static AshDumpLib.HedgehogEngine.MathA;
+
 namespace AshDumpLib.HedgehogEngine.BINA;
 
 public class Reflection : IFile
@@ -35,7 +37,7 @@ public class Reflection : IFile
         reader.ReadHeader();
 
         structTemplate = template.structs[RFLName];
-        Parameters = ReadStruct(reader, structTemplate, RFLName);
+        Parameters.Add(RFLName, ReadStruct(reader, structTemplate, RFLName));
 
         reader.Dispose();
     }
@@ -67,7 +69,7 @@ public class Reflection : IFile
             int align = 1;
             switch (type)
             {
-                case "bool" or "uint8" or "int8":
+                case "bool" or "uint8" or "int8" or "flags":
                     align = 1;
                     break;
 
@@ -75,11 +77,11 @@ public class Reflection : IFile
                     align = 2;
                     break;
 
-                case "int32" or "uint32" or "float32":
+                case "int32" or "uint32" or "float32" or "vector2" or "color8" or "colorf":
                     align = 4;
                     break;
 
-                case "string" or "uint64" or "int64" or "float64" or "vector2":
+                case "string" or "uint64" or "int64" or "float64":
                     align = 8;
                     break;
 
@@ -97,11 +99,7 @@ public class Reflection : IFile
                         align = GetAlignment(new() { alignment = null, type = subtype }, fileVersion);
                     break;
 
-                case "vector3":
-                    align = 12;
-                    break;
-
-                case "vector4":
+                case "vector3" or "vector4" or "matrix34" or "matrix44":
                     align = 16;
                     break;
 
@@ -129,17 +127,17 @@ public class Reflection : IFile
                                     break;
                             }
                         }
-                        else if (template.structs.ContainsKey(field.type))
+                    }
+                    else if (template.structs.ContainsKey(field.type))
+                    {
+                        int largestAlignStr = 0;
+                        foreach (var i in template.structs[field.type].fields)
                         {
-                            int largestAlignStr = 0;
-                            foreach (var i in template.structs[field.type].fields)
-                            {
-                                align = GetAlignment(i, fileVersion);
-                                if (align > largestAlignStr)
-                                    largestAlignStr = align;
-                            }
-                            return largestAlignStr;
+                            align = GetAlignment(i, fileVersion);
+                            if (align > largestAlignStr)
+                                largestAlignStr = align;
                         }
+                        return largestAlignStr;
                     }
                     break;
             }
@@ -175,7 +173,7 @@ public class Reflection : IFile
                 value = reader.Read<double>();
                 break;
 
-            case "uint8" or "int8":
+            case "uint8" or "int8" or "flags":
                 value = reader.Read<byte>();
                 break;
 
@@ -208,6 +206,7 @@ public class Reflection : IFile
                 reader.Skip(8);
                 break;
 
+
             case "array":
                 object[] arrayValue;
                 if (field.array_size == null)
@@ -237,6 +236,22 @@ public class Reflection : IFile
 
             case "vector4":
                 value = reader.Read<Vector4>();
+                break;
+
+            case "matrix34":
+                //value = reader.Read<Matrix3x4>();
+                break;
+
+            case "matrix44":
+                value = reader.Read<Matrix4x4>();
+                break;
+
+            case "color8":
+                value = reader.Read<Color8>();
+                break;
+
+            case "colorf":
+                value = reader.Read<ColorF>();
                 break;
 
             default:
@@ -325,18 +340,15 @@ public class Reflection : IFile
                                 break;
                         }
                     }
-                    else if(template.structs.ContainsKey(type))
-                    {
-                        isStruct = true;
-                        value = ReadStruct(reader, template.structs[type], type);
-                    }
+                }
+                else if (template.structs.ContainsKey(type))
+                {
+                    isStruct = true;
+                    value = ReadStruct(reader, template.structs[type], type);
                 }
                 break;
         }
-        if (field.alignment != null && !isStruct)
-            reader.Align((int)field.alignment);
-        else if (isStruct)
-            reader.Align(GetAlignment(field, reader.FileVersion));
+        reader.Align(GetAlignment(field, reader.FileVersion));
         return value;
     }
 
