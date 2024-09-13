@@ -54,5 +54,5 @@ public class IFile
 
     public virtual void Write(ExtendedBinaryWriter writer) => throw new NotImplementedException();
     public virtual void FinishWrite(ExtendedBinaryWriter writer) { }
-    public virtual void WriteBuffer() { ExtendedBinaryWriter writer = new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness);  Write(writer); FinishWrite(writer); }
+    public virtual void WriteBuffer() { MemoryStream memStream = new MemoryStream(); ExtendedBinaryWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness);  Write(writer); FinishWrite(writer); Data = memStream.ToArray(); }
 }
