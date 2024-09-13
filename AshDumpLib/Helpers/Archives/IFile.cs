@@ -7,7 +7,7 @@ public class IFile
     public string FilePath;
     public string FileName;
     public string Extension;
-    public byte[] Data;
+    public byte[] Data = new byte[0];
     public const Endianness endianness = Endianness.Little;
 
     public IFile() { }

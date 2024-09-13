@@ -94,81 +94,88 @@ public class PAC : Archive
         public int StartIndex;
     }
 
-    static string CommonPrefix(string[] input)
+    static HashSet<string> FindCommonParts(List<string> inputList)
     {
-        if (input.Length == 0)
+        var commonParts = new HashSet<string>();
+        int minLength = inputList.Min(s => s.Length);
+
+        // Define minimum length for common substrings
+        int minimumCommonPartLength = 4;
+
+        for (int length = minimumCommonPartLength; length <= minLength; length++)
         {
-            return "";
-        }
-        Array.Sort(input);
-        string prefix = "";
-        for (int i = 0; i < input[0].Length; i++)
-        {
-            char c = input[0][i];
-            for (int j = 1; j < input.Length; j++)
+            var substrings = new Dictionary<string, int>();
+
+            foreach (var item in inputList)
             {
-                if (i >= input[j].Length || input[j][i] != c)
+                for (int i = 0; i <= item.Length - length; i++)
                 {
-                    return prefix;
+                    var substring = item.Substring(i, length);
+                    if (substrings.ContainsKey(substring))
+                    {
+                        substrings[substring]++;
+                    }
+                    else
+                    {
+                        substrings[substring] = 1;
+                    }
                 }
             }
-            prefix += c;
-        }
-        return prefix;
-    }
 
-    static List<Tuple<string, string>> FindStringsWithCommonSubstrings(string[] strings, int minLength)
-    {
-        List<Tuple<string, string>> commonPairs = new List<Tuple<string, string>>();
-
-        for (int i = 0; i < strings.Length; i++)
-        {
-            for (int j = i + 1; j < strings.Length; j++)
+            foreach (var kvp in substrings)
             {
-                if (HasCommonSubstring(strings[i], strings[j], minLength))
+                if (kvp.Value > 1)
                 {
-                    commonPairs.Add(new Tuple<string, string>(strings[i], strings[j]));
-                }
-            }
-        }
-
-        return commonPairs;
-    }
-
-    static bool HasCommonSubstring(string str1, string str2, int minLength)
-    {
-        for (int length = minLength; length <= Math.Min(str1.Length, str2.Length); length++)
-        {
-            for (int i = 0; i <= str1.Length - length; i++)
-            {
-                string substring = str1.Substring(i, length);
-                if (str2.Contains(substring))
-                {
-                    return true;
+                    commonParts.Add(kvp.Key);
                 }
             }
         }
-        return false;
+
+        return commonParts;
     }
 
-    static void ConvertToSplitStrings(List<string> strings, int parentID, int startID, ref List<SplitString> sStr)
+    static List<string> SplitStrings(List<string> inputList)
     {
-        string prefix = CommonPrefix(strings.ToArray());
-        sStr.Add(new() { Value = prefix, ParentIndex = parentID, StartIndex = startID });
-        if (prefix != "")
+        var commonParts = FindCommonParts(inputList);
+        var result = new List<string>();
+
+        foreach (var item in inputList)
         {
-            List<string> strs = new();
-            foreach(var i in strings)
-                strs.Add(i.Substring(prefix.Length));
-            ConvertToSplitStrings(strs, parentID++, startID + prefix.Length, ref sStr);
+            string temp = item;
+            var matchedParts = new List<string>();
+
+            foreach (var part in commonParts.OrderByDescending(p => p.Length))
+            {
+                int index;
+                while ((index = temp.IndexOf(part)) != -1)
+                {
+                    if (index > 0)
+                    {
+                        matchedParts.Add(temp.Substring(0, index));
+                    }
+                    matchedParts.Add(part);
+                    temp = temp.Substring(index + part.Length);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(temp))
+            {
+                matchedParts.Add(temp);
+            }
+
+            result.AddRange(matchedParts);
         }
+
+        return result;
     }
 
     static List<SplitString> SplitStringsIntoNodes(List<string> strings)
     {
         List<SplitString> sStr = new();
         List<string> sStrings = new(new HashSet<string>(strings));
-        ConvertToSplitStrings(sStrings, -1, 0, ref sStr);
+        //ConvertToSplitStrings(sStrings, -1, 0, ref sStr);
+        List<string> test2 = new(FindCommonParts(sStrings));
+        List<string> test = SplitStrings(sStrings);
         return sStr;
     }
 
