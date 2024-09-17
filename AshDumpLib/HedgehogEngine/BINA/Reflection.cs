@@ -4,6 +4,7 @@ using System.Numerics;
 using Amicitia.IO.Binary;
 
 using static AshDumpLib.HedgehogEngine.MathA;
+using System.Security.AccessControl;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
@@ -94,7 +95,7 @@ public class Reflection : IFile
 
                 case "array":
                     if (field.array_size == null)
-                        throw new NotImplementedException();
+                        align = 8;
                     else
                         align = GetAlignment(new() { alignment = null, type = subtype }, fileVersion);
                     break;
@@ -208,10 +209,34 @@ public class Reflection : IFile
 
 
             case "array":
-                object[] arrayValue;
+                object[] arrayValue = new object[0];
                 if (field.array_size == null)
                 {
-                    throw new NotImplementedException();
+                    long arrayPtr = 0;
+                    long arrayLength = 0;
+                    if (field.array_size == null)
+                    {
+                        arrayPtr = reader.Read<long>();
+                        arrayLength = reader.Read<long>();
+                        long arrayLength2 = reader.Read<long>();
+                        reader.Skip(8);
+                        if (arrayLength > 0 && arrayPtr > 0)
+                        {
+                            arrayValue = new object[arrayLength];
+                            reader.ReadAtOffset(arrayPtr + 64, () =>
+                            {
+                                for (int i = 0; i < arrayLength; i++)
+                                    arrayValue[i] = ReadField(reader, field.subtype, field, parent);
+                            });
+                        }
+                    }
+                    else
+                    {
+                        arrayLength = (int)field.array_size;
+                        arrayValue = new object[arrayLength];
+                        for (int i = 0; i < arrayLength; i++)
+                            arrayValue[i] = ReadField(reader, field.subtype, field, parent);
+                    }
                 }
                 else
                 {
@@ -416,7 +441,16 @@ public class Reflection : IFile
 
             case "array":
                 if (field.array_size == null)
-                    throw new NotImplementedException();
+                {
+                    //Random rnd = new();
+                    //long r = rnd.NextInt64();
+                    //writer.AddOffset(ObjectName + ID.ToString() + field.name + "." + field.subtype + r.ToString());
+                    //writer.Write((long)((object[])value).Length);
+                    //writer.Write((long)((object[])value).Length);
+                    //writer.WriteNulls(8);
+                    //paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
+                    throw new NotImplementedException("Not pre-set array size writing isn't implemented yet!");
+                }
                 else
                     for (int i = 0; i < (int)field.array_size; i++)
                         WriteField(writer, new() { name = field.name, type = field.subtype }, ((object[])value)[i]);
