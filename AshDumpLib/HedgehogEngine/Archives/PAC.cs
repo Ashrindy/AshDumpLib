@@ -367,6 +367,12 @@ public class PAC : Archive
                                     AddFile(tMat);
                                     break;
 
+                                case "shader-list":
+                                    ShaderList shaderList = new();
+                                    shaderList.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(shaderList);
+                                    break;
+
                                 case "skl.pxd":
                                     SkeletonPXD skeletonPXD = new();
                                     skeletonPXD.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
