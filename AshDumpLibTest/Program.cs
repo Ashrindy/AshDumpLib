@@ -3,6 +3,8 @@ using AshDumpLib.CastleSiege;
 using AshDumpLib.HedgehogEngine.Archives;
 using AshDumpLib.HedgehogEngine.BINA;
 using AshDumpLib.HedgehogEngine.Mirage.Anim;
+using AshDumpLib.HedgehogEngine.Needle;
+
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
 //MaterialAnimation anim = new();
@@ -39,7 +41,6 @@ string filepath = Console.ReadLine();
 //anim.SaveToFile(filepath);
 //ObjectWorld gedit = new(filepath);
 //Reflection rfl = new(filepath, rflName: "NeedleFxSceneData");
-ShaderList shaderList = new(filepath);
-shaderList.SaveToFile(filepath + "1");
+NeedleShader needleShader = new(filepath);
 
 Console.WriteLine("test");
