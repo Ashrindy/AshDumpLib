@@ -17,7 +17,7 @@ public class NeedleShader : IFile
     public string ShaderFilePath = "";
 
     public List<Permutation> Permutations = new();
-    public byte[] MainShader;
+    public List<SubShader> Shaders;
 
     public NeedleShader() { }
 
@@ -49,7 +49,7 @@ public class NeedleShader : IFile
         int mainShaderFullSize = reader.Read<int>();
         SubShader shader = new();
         shader.Read(reader);
-        MainShader = shader.Data;
+        //MainShader = shader.Data;
         reader.Dispose();
     }
 
@@ -75,12 +75,13 @@ public class NeedleShader : IFile
 
     public class SubShader
     {
-        public byte[] Data;
+        public byte[] MainData;
+        public byte[] SubData;
 
         public void Read(ExtendedBinaryReader reader)
         {
             int shaderSize = reader.Read<int>();
-            Data = reader.ReadArray<byte>(shaderSize);
+            MainData = reader.ReadArray<byte>(shaderSize);
         }
     }
 }

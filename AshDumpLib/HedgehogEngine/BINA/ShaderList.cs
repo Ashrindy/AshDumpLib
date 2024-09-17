@@ -1,6 +1,7 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using Amicitia.IO.Binary;
 using System.Reflection.PortableExecutable;
+using System.Xml.Linq;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 public class ShaderList : IFile
@@ -10,7 +11,7 @@ public class ShaderList : IFile
 
     public int Version = 2;
 
-    public ShaderListInput MainInput = new();
+    public List<ShaderListShader> Shaders = new();
     public List<ShaderListInput> Inputs = new();
 
     public ShaderList() { }
@@ -27,7 +28,17 @@ public class ShaderList : IFile
         Version = reader.Read<int>();
         long tableOffset = reader.Read<long>();
         long tableLength = reader.Read<long>();
-        MainInput.Read(reader);
+        long shadertableOffset = reader.Read<long>();
+        long shadertableLength = reader.Read<long>();
+        reader.ReadAtOffset(shadertableOffset + 64, () =>
+        {
+            for (int i = 0; i < shadertableLength; i++)
+            {
+                ShaderListShader shader = new();
+                shader.Read(reader);
+                Shaders.Add(shader);
+            }
+        });
         reader.ReadAtOffset(tableOffset + 64, () =>
         {
             for (int i = 0; i < tableLength; i++)
@@ -47,12 +58,34 @@ public class ShaderList : IFile
         writer.Write(Version);
         writer.AddOffset("tableOffset");
         writer.Write((long)Inputs.Count);
-        MainInput.Write(writer);
+        writer.AddOffset("shadertableOffset");
+        writer.Write((long)Shaders.Count);
         writer.SetOffset("tableOffset");
         foreach (var i in Inputs)
             i.Write(writer);
+        writer.SetOffset("shadertableOffset");
+        foreach(var i in Shaders)
+            i.Write(writer);
         writer.FinishWrite();
         writer.Dispose();
+    }
+
+    public class ShaderListShader
+    {
+        public string TypeName = "";
+        public string ShaderName = "";
+
+        public void Read(BINAReader reader)
+        {
+            TypeName = reader.ReadStringTableEntry();
+            ShaderName = reader.ReadStringTableEntry();
+        }
+
+        public void Write(BINAWriter writer)
+        {
+            writer.WriteStringTableEntry(TypeName);
+            writer.WriteStringTableEntry(ShaderName);
+        }
     }
 
     public class ShaderListInput
@@ -63,7 +96,7 @@ public class ShaderList : IFile
         public void Read(BINAReader reader)
         {
             Name = reader.ReadStringTableEntry();
-            ID = reader.ReadInt32();
+            ID = reader.Read<int>();
             reader.Align(8);
         }
 
