@@ -33,7 +33,7 @@ namespace AshDumpLib
             //Adds offset to the OffsetTable
             Offsets.Add(entry + "." + Position, Position - GenericOffset);
 
-            if (!StringTable.Contains(entry))
+            if (!StringTable.Contains(entry + "\0"))
             {
                 //Adds offset to the StringTableOffset for later correction
                 StringTableOffsets.Add(Position, StringTable.Length);

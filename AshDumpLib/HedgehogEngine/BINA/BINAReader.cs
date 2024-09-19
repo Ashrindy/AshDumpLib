@@ -104,4 +104,53 @@ public class BINAReader : ExtendedBinaryReader
     {
         Seek(offset + 64, origin);
     }
+
+    public List<T> ReadBINAArrayStruct<T>() where T : IBINASerializable, new()
+    {
+        List<T> list = new();
+        long count = Read<int>();
+        this.Align(8);
+        long offset = Read<long>();
+        ReadAtOffset(offset + 64, () =>
+        {
+            for (int i = 0; i < count; i++)
+            {
+                T t = new();
+                t.Read(this);
+                list.Add(t);
+            }
+        }
+        );
+        return list;
+    }
+
+    public List<T> ReadBINAArray<T>() where T : unmanaged
+    {
+        List<T> list = new();
+        long count = Read<int>();
+        this.Align(8);
+        long offset = Read<long>();
+        ReadAtOffset(offset + 64, () =>
+        {
+            for (int i = 0; i < count; i++)
+                list.Add(Read<T>());
+        }
+        );
+        return list;
+    }
+
+    public List<string> ReadBINAStringArray()
+    {
+        List<string> list = new();
+        long count = Read<int>();
+        this.Align(8);
+        long offset = Read<long>();
+        ReadAtOffset(offset + 64, () =>
+        {
+            for (int i = 0; i < count; i++)
+                list.Add(ReadStringTableEntry());
+        }
+        );
+        return list;
+    }
 }

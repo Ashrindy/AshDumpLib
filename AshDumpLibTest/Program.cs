@@ -40,7 +40,9 @@ string filepath = Console.ReadLine();
 //anim.Materials.Add(mat);
 //anim.SaveToFile(filepath);
 //ObjectWorld gedit = new(filepath);
-Reflection rfl = new(filepath, rflName: "BossRifleConfig");
+//Reflection rfl = new(filepath, rflName: "BossRifleConfig");
 //NeedleShader needleShader = new(filepath);
+Animator asm = new(filepath);
+asm.SaveToFile(filepath + "1");
 
 Console.WriteLine("test");

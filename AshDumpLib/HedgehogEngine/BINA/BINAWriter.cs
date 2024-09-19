@@ -1,6 +1,7 @@
 ﻿using Amicitia.IO;
 using Amicitia.IO.Binary;
 using Amicitia.IO.Streams;
+using System.Reflection;
 using System.Text;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
@@ -18,6 +19,8 @@ public class BINAWriter : ExtendedBinaryWriter
     long stringTableOffsetPos = 24;
     long stringTableSizePos = 28;
     long offsetTableSizePos = 32;
+
+    Dictionary<string, List<object>> arrays = new();
 
     public BINAWriter(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
     {
@@ -93,6 +96,35 @@ public class BINAWriter : ExtendedBinaryWriter
 
     public override void FinishWrite()
     {
+        foreach(var x in arrays)
+        {
+            SetOffset(x.Key);
+            foreach(var i in x.Value)
+            {
+                if (i.GetType().IsGenericType)
+                {
+                    MethodInfo method = typeof(BinaryValueWriter).GetMethod(nameof(Write));
+                    MethodInfo genericMethod = method.MakeGenericMethod(i.GetType().GetGenericArguments()[0]);
+                    genericMethod.Invoke(this, new object[] { i });
+                }
+                else if (i.GetType() == typeof(string))
+                    WriteStringTableEntry((string)i);
+                else if(i.GetType() == typeof(Int16))
+                    Write((Int16)i);
+                else
+                    ((IBINASerializable)i).Write(this);
+            }
+        }
+
+        foreach (var x in arrays)
+        {
+            foreach (var i in x.Value)
+            {
+                if (i.GetType() == typeof(IBINASerializable))
+                    ((IBINASerializable)i).FinishWrite(this);
+            }
+        }
+
         //We save the current position as StringTableOffset here so we can quickly jump back and also write it in the BINA header
         int stringTableOffset = (int)Position;
 
@@ -159,5 +191,16 @@ public class BINAWriter : ExtendedBinaryWriter
         OffsetValues.Add(id, 0);
         OffsetsWrite.Add(id, write);
         this.Skip(8);
+    }
+
+    public void WriteBINAArray<T>(List<T> list, string id)
+    {
+        Write(list.Count);
+        this.Align(8);
+        AddOffset(id);
+        List<object> li = new();
+        foreach (var i in list)
+            li.Add(i);
+        arrays.Add(id, li);
     }
 }

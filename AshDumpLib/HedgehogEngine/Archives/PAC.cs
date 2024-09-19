@@ -301,6 +301,12 @@ public class PAC : Archive
                                     AddFile(animationPXD);
                                     break;
 
+                                case "asm":
+                                    Animator asm = new();
+                                    asm.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(asm);
+                                    break;
+
                                 case "cnvrs-text":
                                     Text text = new();
                                     text.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
