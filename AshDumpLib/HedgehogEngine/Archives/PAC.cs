@@ -3,6 +3,8 @@ using AshDumpLib.HedgehogEngine.BINA;
 using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.Helpers.Archives;
 using K4os.Compression.LZ4;
+using K4os.Compression.LZ4.Streams;
+using System.Xml.Linq;
 
 namespace AshDumpLib.HedgehogEngine.Archives;
 
@@ -89,96 +91,83 @@ public class PAC : Archive
 
     struct SplitString
     {
-        public string Value;
-        public int ParentIndex;
-        public int StartIndex;
+        public string parent;
+        public int start;
+        public string value;
+        public List<string> children;
     }
 
-    static HashSet<string> FindCommonParts(List<string> inputList)
+    static List<string> RemoveDuplicates(List<string> inputList)
     {
-        var commonParts = new HashSet<string>();
-        int minLength = inputList.Min(s => s.Length);
+        HashSet<string> uniqueStrings = new HashSet<string>(inputList);
+        return new List<string>(uniqueStrings);
+    }
 
-        // Define minimum length for common substrings
-        int minimumCommonPartLength = 4;
-
-        for (int length = minimumCommonPartLength; length <= minLength; length++)
+    static List<List<SplitString>> GetPrefix(List<string> strings)
+    {
+        strings.Sort();
+        List<string> doneStrings = new();
+        List<List<SplitString>> prefixes = new();
+        foreach (string s in strings)
         {
-            var substrings = new Dictionary<string, int>();
-
-            foreach (var item in inputList)
+            List<SplitString> temp = new();
+            List<int> matchedLengths = new();
+            foreach (var i in strings.Where(x => x != s && x[0] == s[0]))
             {
-                for (int i = 0; i <= item.Length - length; i++)
+                int maxLength = Math.Min(s.Length, i.Length);
+                int matchedLength = 0;
+                for (int j = 0; j < maxLength; j++)
                 {
-                    var substring = item.Substring(i, length);
-                    if (substrings.ContainsKey(substring))
-                    {
-                        substrings[substring]++;
-                    }
+                    if (i[j] == s[j])
+                        matchedLength++;
                     else
-                    {
-                        substrings[substring] = 1;
-                    }
+                        break;
                 }
+                matchedLengths.Add(matchedLength);
             }
-
-            foreach (var kvp in substrings)
+            matchedLengths.Sort();
+            if (matchedLengths.Count > 0)
             {
-                if (kvp.Value > 1)
-                {
-                    commonParts.Add(kvp.Key);
-                }
+                temp.Add(new() { parent = "", start = 0, value = s.Remove(matchedLengths.First()), children = new() { s.Substring(matchedLengths.First()) } } );
+                temp.Add(new() { parent = s.Remove(matchedLengths.First()), start = matchedLengths.First(), value = s.Substring(matchedLengths.First()), children = new() });
             }
+            else
+                temp.Add(new() { parent = "", start = 0, value = s, children = new() });
+            prefixes.Add(temp);
         }
 
-        return commonParts;
+        return prefixes;
     }
 
-    static List<string> SplitStrings(List<string> inputList)
+    static List<SplitString> GetSplitStrings(List<string> strings)
     {
-        var commonParts = FindCommonParts(inputList);
-        var result = new List<string>();
+        List<string> result = new();
+        List<List<SplitString>> prefixes = GetPrefix(strings);
+        List<SplitString> flattenedPrefixes = new();
+        foreach(var i in prefixes)
+            foreach(var l in i)
+                if(!flattenedPrefixes.Contains(l))
+                    flattenedPrefixes.Add(l);
+        return flattenedPrefixes;
+    }
 
-        foreach (var item in inputList)
+    static List<byte[]> SplitByteArray(byte[] byteArray, int chunkSize)
+    {
+        List<byte[]> result = new List<byte[]>();
+        int totalLength = byteArray.Length;
+        int currentIndex = 0;
+
+        while (currentIndex < totalLength)
         {
-            string temp = item;
-            var matchedParts = new List<string>();
-
-            foreach (var part in commonParts.OrderByDescending(p => p.Length))
-            {
-                int index;
-                while ((index = temp.IndexOf(part)) != -1)
-                {
-                    if (index > 0)
-                    {
-                        matchedParts.Add(temp.Substring(0, index));
-                    }
-                    matchedParts.Add(part);
-                    temp = temp.Substring(index + part.Length);
-                }
-            }
-
-            if (!string.IsNullOrEmpty(temp))
-            {
-                matchedParts.Add(temp);
-            }
-
-            result.AddRange(matchedParts);
+            int currentChunkSize = Math.Min(chunkSize, totalLength - currentIndex);
+            byte[] chunk = new byte[currentChunkSize];
+            Array.Copy(byteArray, currentIndex, chunk, 0, currentChunkSize);
+            result.Add(chunk);
+            currentIndex += currentChunkSize;
         }
 
         return result;
     }
-
-    static List<SplitString> SplitStringsIntoNodes(List<string> strings)
-    {
-        List<SplitString> sStr = new();
-        List<string> sStrings = new(new HashSet<string>(strings));
-        //ConvertToSplitStrings(sStrings, -1, 0, ref sStr);
-        List<string> test2 = new(FindCommonParts(sStrings));
-        List<string> test = SplitStrings(sStrings);
-        return sStr;
-    }
-
 
     public PACVersion Version;
     public uint ID = 0;
@@ -250,6 +239,8 @@ public class PAC : Archive
         }
         else
             throw new Exception("Unimplemented Version!");
+        int fileSize = (int)writer.Position;
+        writer.WriteAt(fileSize, writer.GetOffset("fileSize"));
     }
 
     static void LoopThroughNodesForName(Tree<Node<FileNode>> tree, Node<FileNode> curNode, ref string name)
@@ -454,6 +445,11 @@ public class PAC : Archive
         List<string> resTypes = new();
         foreach(var i in Files)
             resTypes.Add(GetResTypeByExt(i.Extension).Type);
+        Dictionary<string, List<IFile>> filesSorted = new();
+        foreach (var i in RemoveDuplicates(resTypes))
+            filesSorted.Add(i, new());
+        foreach(var i in Files)
+            filesSorted[GetResTypeByExt(i.Extension).Type].Add(i);
         Node<Tree<Node<FileNode>>> mainNode = new();
         mainNode.name = "";
         mainNode.parentIndex = -1;
@@ -462,10 +458,116 @@ public class PAC : Archive
         mainNode.childIndices.Add(1);
         mainNode.bufferStartIndex = 0;
         tree.nodes.Add(mainNode);
-        var f = SplitStringsIntoNodes(resTypes);
-        //tree.nodes.AddRange();
+        for (int i = 0; i < resTypes.Count; i++)
+            resTypes[i] = resTypes[i].Replace("Res", "");
+        var g = GetSplitStrings(RemoveDuplicates(resTypes));
+        var f = g.GroupBy(x => x.value).Select(group => new SplitString() { value = group.Key, children = group.SelectMany(s => s.children).Distinct().ToList(), parent = group.Select(s => s.parent).First(), start = group.Select(s => s.start).First() }).ToList();
+        for (int i = 0; i < f.Count; i++)
+        {
+            SplitString s = f[i];
+            s.start += 3;
+            if(s.parent == "")
+                s.parent = "Res";
+            f[i] = s;
+        }
+        List<string> childrenRes = new();
+        foreach (var i in f)
+        {
+            if (i.parent == "Res" && !childrenRes.Contains(i.value))
+                childrenRes.Add(i.value);
+        }
+        f.Insert(0, new() { parent = "", start = 0, value = "Res", children = childrenRes });
+
+        int index = 1;
+        int dataIndex = 0;
+
+        foreach(var i in f)
+        {
+            Node<Tree<Node<FileNode>>> node = new();
+            node.ID = new Random().Next();
+            node.name = i.value;
+            if(i.parent != "")
+                node.parentIndex = tree.nodes.Find(x => x.name == i.parent).globalIndex;
+            else
+                node.parentIndex = 0;
+            node.globalIndex = index;
+            node.bufferStartIndex = i.start;
+            node.dataIndex = -1;
+            if (i.children.Count == 0)
+            {
+                Node<Tree<Node<FileNode>>> dataNode = new();
+                node.childIndices.Add(index + 1);
+                dataNode.ID = new Random().Next();
+                dataNode.name = "";
+                dataNode.parentIndex = index;
+                dataNode.globalIndex = index + 1;
+                dataNode.dataIndex = dataIndex;
+                dataNode.bufferStartIndex = i.start + 1;
+                dataNode.data = new();
+                Node<FileNode> mainfileNode = new();
+                mainfileNode.ID = new Random().Next();
+                mainfileNode.name = "";
+                mainfileNode.parentIndex = -1;
+                mainfileNode.globalIndex = 0;
+                mainfileNode.dataIndex = -1;
+                mainfileNode.bufferStartIndex = 0;
+                dataNode.data.nodes.Add(mainfileNode);
+                tree.indices.Add(index + 1);
+                int filedataIndex = 1;
+                int filedatadataindex = 0;
+                foreach(var x in filesSorted[ResTypesRangers.Find(l => l.Type.Contains(i.parent + i.value)).Type])
+                {
+                    Node<FileNode> fileNode = new();
+                    fileNode.ID = new Random().Next();
+                    fileNode.name = x.FileName.Replace(x.Extension, "").Remove(x.FileName.Replace(x.Extension, "").Length - 1);
+                    fileNode.parentIndex = 0;
+                    fileNode.globalIndex = filedataIndex;
+                    fileNode.dataIndex = -1;
+                    dataNode.data.nodes[0].childIndices.Add(filedataIndex);
+                    fileNode.childIndices.Add(filedataIndex + 1);
+                    fileNode.bufferStartIndex = 0;
+                    dataNode.data.nodes.Add(fileNode);
+                    Node<FileNode> fileDataNode = new();
+                    fileDataNode.data = new();
+                    fileDataNode.ID = new Random().Next();
+                    fileDataNode.name = "";
+                    fileDataNode.parentIndex = filedataIndex;
+                    fileDataNode.globalIndex = filedataIndex + 1;
+                    fileDataNode.dataIndex = filedatadataindex;
+                    fileDataNode.bufferStartIndex = 0;
+                    fileDataNode.data.uid = new Random().Next();
+                    fileDataNode.data.extension = x.Extension;
+                    fileDataNode.data.data = x.Data;
+                    dataNode.data.nodes.Add(fileDataNode);
+                    dataNode.data.indices.Add(filedataIndex + 1);
+                    filedataIndex++;
+                    filedataIndex++;
+                    filedatadataindex++;
+                }
+                tree.nodes.Add(node);
+                tree.nodes.Add(dataNode);
+                index++;
+                dataIndex++;
+            }
+            else
+                tree.nodes.Add(node);
+            index++;
+        }
+        index = 1;
+        foreach(var i in f)
+        {
+            if (i.children != null && i.children.Count > 0)
+            {
+                foreach (var y in i.children)
+                    tree.nodes[index].childIndices.Add(tree.nodes.Find(x => x.name == y).globalIndex);
+            }
+            index++;
+        }
         tree.Write(writer);
         tree.FinishWrite(writer);
+        int treesSize = (int)writer.Position - 48;
+        writer.WriteAt(treesSize, writer.GetOffset("treesSize"));
+        writer.WriteAt(treesSize, writer.GetOffset("dataEntriesSize"));
 
         int stringTableOffset = (int)writer.Position;
 
@@ -483,6 +585,34 @@ public class PAC : Archive
         int stringSize = (int)writer.Position - (int)writer.GetOffsetValue("strTableSize");
 
         writer.WriteAt(stringSize, writer.GetOffset("strTableSize"));
+
+        int fileDataSize = (int)writer.Position;
+        writer.FixPadding(16);
+        foreach(var i in tree.indices)
+        {
+            foreach(var x in tree.nodes[i].data.indices)
+            {
+                tree.nodes[i].data.nodes[x].data.WriteData(writer);
+            }
+        }
+        fileDataSize = (int)writer.Position - fileDataSize;
+
+        writer.WriteAt(fileDataSize, writer.GetOffset("fileDataSize"));
+
+        int offsetSize = (int)writer.Position;
+        long lastOffsetPos = 0;
+        foreach (var i in writer.Offsets)
+        {
+            int x = ((int)i.Value - (int)lastOffsetPos) >> 2;
+            if (x <= 63)
+                writer.Write((byte)((byte)64 | x));
+            lastOffsetPos = i.Value;
+        }
+
+        writer.FixPadding(4);
+        offsetSize = (int)writer.Position - offsetSize;
+
+        writer.WriteAt(offsetSize, writer.GetOffset("offTableSize"));
     }
 
     bool HasMetadata(HeaderV4 m)
@@ -537,6 +667,7 @@ public class PAC : Archive
             uncompressedRootData.AddRange(chunkInfos[i].uncompressedData);
         }
         rootChunk.uncompressedData = uncompressedRootData.ToArray();
+        File.WriteAllBytes(FilePath + "_og.root", rootChunk.uncompressedData);
         reader.Seek(prePos1, SeekOrigin.Begin);
         PAC rootPac = new();
         rootPac.Open(FileName + ".root", rootChunk.uncompressedData, parseFiles);
@@ -572,9 +703,30 @@ public class PAC : Archive
 
     void WriteV3(ExtendedBinaryWriter writer)
     {
-        writer.AddOffset("root");
-        writer.AddOffset("rootCSize", false);
-        writer.AddOffset("rootUCSize", false);
+        PAC rootPac = new();
+        rootPac.ID = ID;
+        rootPac.Files = Files;
+        rootPac.Version = new() { MajorVersion = Version.MajorVersion, MinorVersion = (byte)'0', RevisionVersion = (byte)'2' };
+        rootPac.Type = PacType.Root;
+        Chunk rootChunk = new();
+        MemoryStream memStream = new MemoryStream();
+        rootPac.Write(new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Little));
+        rootChunk.uncompressedData = memStream.ToArray();
+        List<byte[]> chunks = SplitByteArray(rootChunk.uncompressedData, 65536);
+        List<byte[]> compressedChunks = new();
+        int compressedSize = 0;
+        foreach (var i in chunks)
+        {
+            byte[] unkcompressedChunk = new byte[LZ4Codec.MaximumOutputSize(i.Length)];
+            var length = LZ4Codec.Encode(i, unkcompressedChunk, LZ4Level.L00_FAST);
+            compressedSize += length;
+            byte[] compressedChunk = new byte[length];
+            Array.Copy(unkcompressedChunk, compressedChunk, length);
+            compressedChunks.Add(compressedChunk);
+        }
+        writer.AddOffset("rootPacOffset");
+        writer.Write(compressedSize);
+        writer.Write(rootChunk.uncompressedData.Length);
         FlagsV4 flags = FlagsV4.unk | FlagsV4.hasMetadata;
         if(parentPaths.Count > 0)
             flags |= FlagsV4.hasParents;
@@ -594,17 +746,50 @@ public class PAC : Archive
             writer.AddOffset(path, true);
             writer.WriteNulls(4);
         }
-        PAC rootPac = new();
-        rootPac.ID = ID;
-        rootPac.Files = Files;
-        rootPac.Version = new() { MajorVersion = Version.MajorVersion, MinorVersion = (byte)'0', RevisionVersion = (byte)'2' };
-        rootPac.Type = PacType.Root;
-        Chunk rootChunk = new();
-        int size = 0;
-        foreach (var i in Files)
-            size += i.Data.Length;
-        rootChunk.uncompressedData = new byte[1024 + Files.Count * 32 + size];
-        rootPac.Write(new(new MemoryStream(rootChunk.uncompressedData), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Little));
+
+        int chunkSize = (int)writer.Position;
+
+        writer.Write(compressedChunks.Count);
+        for(int i = 0; i < compressedChunks.Count; i++)
+        {
+            writer.Write(compressedChunks[i].Length);
+            writer.Write(chunks[i].Length);
+        }
+        writer.Align(8);
+        chunkSize = (int)writer.Position - chunkSize;
+
+        writer.WriteAt(chunkSize, writer.GetOffset("chunkTableSize"));
+
+        int strSize = (int)writer.Position;
+        foreach (var i in parentPaths)
+        {
+            writer.SetOffset(i);
+            writer.WriteString(StringBinaryFormat.NullTerminated, i);
+        }
+        writer.Align(8);
+        strSize = (int)writer.Position - strSize;
+
+        writer.WriteAt(strSize, writer.GetOffset("strTableSize"));
+
+        int offsetSize = (int)writer.Position;
+        long lastOffsetPos = 0;
+        foreach (var i in writer.Offsets)
+        {
+            int x = ((int)i.Value - (int)lastOffsetPos) >> 2;
+            if (x <= 63)
+                writer.Write((byte)((byte)64 | x));
+            lastOffsetPos = i.Value;
+        }
+
+        writer.Align(16);
+        offsetSize = (int)writer.Position - offsetSize;
+
+        writer.WriteAt(offsetSize, writer.GetOffset("offTableSize"));
+
+        writer.SetOffset("rootPacOffset");
+        foreach (var i in compressedChunks)
+            writer.WriteArray(i);
+
         File.WriteAllBytes(FilePath + ".root", rootChunk.uncompressedData);
     }
 
@@ -712,7 +897,7 @@ public class PAC : Archive
     {
         public List<T> nodes = new();
         public List<int> indices = new();
-        public int ID = 0;
+        public int ID = new Random().Next();
 
         public void Read(ExtendedBinaryReader reader)
         {
@@ -762,7 +947,7 @@ public class PAC : Archive
         public List<int> childIndices = new();
         public int bufferStartIndex;
         public T data;
-        public int ID = 0;
+        public int ID = new Random().Next();
 
         public void Read(ExtendedBinaryReader reader)
         {
@@ -808,6 +993,7 @@ public class PAC : Archive
             {
                 writer.SetOffset(globalIndex + "data" + ID);
                 data.Write(writer);
+                data.FinishWrite(writer);
             }
             writer.SetOffset(globalIndex + "indices" + ID);
             writer.WriteArray(childIndices.ToArray());
@@ -821,6 +1007,7 @@ public class PAC : Archive
         public long dataPtr;
         public long flags;
         public string extension = "";
+        public byte[] data = new byte[0];
 
         public FileNode() { }
 
@@ -838,9 +1025,10 @@ public class PAC : Archive
         public void Write(ExtendedBinaryWriter writer)
         {
             writer.Write(uid);
-            writer.Write(dataSize);
+            writer.Write(data.Length);
             writer.WriteNulls(8);
-            writer.Write(dataPtr);
+            writer.AddOffset(uid.ToString());
+            writer.Skip(4);
             writer.WriteNulls(8);
             writer.WriteStringTableEntry(extension);
             writer.WriteNulls(4);
@@ -849,7 +1037,12 @@ public class PAC : Archive
 
         public void FinishWrite(ExtendedBinaryWriter writer)
         {
-            throw new NotImplementedException();
+        }
+
+        public void WriteData(ExtendedBinaryWriter writer)
+        {
+            writer.SetOffset(uid.ToString());
+            writer.WriteArray(data);
         }
     }
 

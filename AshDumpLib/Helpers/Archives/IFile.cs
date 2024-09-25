@@ -52,7 +52,7 @@ public class IFile
     public virtual void Save() => WriteBuffer();
     public void SaveToFile(string filename) { WriteBuffer(); File.WriteAllBytes(filename, Data); }
 
-    public virtual void Write(ExtendedBinaryWriter writer) => throw new NotImplementedException();
+    public virtual void Write(ExtendedBinaryWriter writer) { }
     public virtual void FinishWrite(ExtendedBinaryWriter writer) { }
     public virtual void WriteBuffer() { MemoryStream memStream = new MemoryStream(); ExtendedBinaryWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness);  Write(writer); FinishWrite(writer); Data = memStream.ToArray(); }
 }

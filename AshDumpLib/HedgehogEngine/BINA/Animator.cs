@@ -192,7 +192,7 @@ public class Animator : IFile
         public bool TransitImmediately = false;
         public byte Flags = 0;
         public byte DefaultLayerIndex = 0;
-        public short RootBlendNodeIndex = 0;
+        public short RootBlendNodeOrClipIndex = 0;
         public short MaxCycles = 0;
         public float Speed = 1;
         public short SpeedVariableIndex = 0;
@@ -212,7 +212,7 @@ public class Animator : IFile
             TransitImmediately = reader.Read<byte>() == 1;
             Flags = reader.Read<byte>();
             DefaultLayerIndex = reader.Read<byte>();
-            RootBlendNodeIndex = reader.Read<short>();
+            RootBlendNodeOrClipIndex = reader.Read<short>();
             MaxCycles = reader.Read<short>();
             Speed = reader.Read<float>();
             SpeedVariableIndex = reader.Read<short>();
@@ -232,7 +232,7 @@ public class Animator : IFile
             writer.Write(TransitImmediately ? (byte)1 : (byte)0);
             writer.Write(Flags);
             writer.Write(DefaultLayerIndex);
-            writer.Write(RootBlendNodeIndex);
+            writer.Write(RootBlendNodeOrClipIndex);
             writer.Write(MaxCycles);
             writer.Write(Speed);
             writer.Write(SpeedVariableIndex);
@@ -340,14 +340,14 @@ public class Animator : IFile
 
         public void Read(BINAReader reader)
         {
-            Offset = reader.Read<int>();
             Size = reader.Read<int>();
+            Offset = reader.Read<int>();
         }
 
         public void Write(BINAWriter writer)
         {
-            writer.Write(Offset);
             writer.Write(Size);
+            writer.Write(Offset);
         }
 
         public void FinishWrite(BINAWriter writer)

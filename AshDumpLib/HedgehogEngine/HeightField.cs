@@ -11,10 +11,10 @@ public class HeightField : IFile
     public int Version = 1;
     public Vector2 TerrainSize = new(4096, 4096);
     public float TexelDensity = 1;
-    public float Unk0 = 0.03051851f;
+    public float HeightPrecision = 0.03051851f;
     public float HeightRange = 1000;
     public float[] CollisionData = new float[0];
-    public float[] MaterialData = new float[0];
+    public byte[] MaterialData = new byte[0];
     public List<Material> Materials = new();
 
     public HeightField() { }
@@ -32,7 +32,7 @@ public class HeightField : IFile
         TerrainSize.Y = reader.Read<int>();
         TexelDensity = reader.Read<float>();
         float unk2 = reader.Read<float>();
-        Unk0 = reader.Read<float>();
+        HeightPrecision = reader.Read<float>();
         HeightRange = reader.Read<float>();
         ushort[] collData = reader.ReadArray<ushort>((int)TerrainSize.X * (int)TerrainSize.Y);
         CollisionData = new float[(int)TerrainSize.X * (int)TerrainSize.Y];
@@ -40,10 +40,7 @@ public class HeightField : IFile
             CollisionData[i] = (float)collData[i] / 32768f;
         int matCount = reader.Read<int>();
         Materials.AddRange(reader.ReadArray<Material>(matCount));
-        byte[] matData = reader.ReadArray<byte>((int)TerrainSize.X * ((int)TerrainSize.Y - 2));
-        MaterialData = new float[(int)TerrainSize.X * ((int)TerrainSize.Y - 2)];
-        for (int i = 0; i < matData.Length; i++)
-            MaterialData[i] = (float)matData[i] / 255f;
+        MaterialData = reader.ReadArray<byte>(((int)TerrainSize.X - 1) * ((int)TerrainSize.Y - 1));
         reader.Dispose();
     }
 
@@ -58,14 +55,14 @@ public class HeightField : IFile
         writer.Write((int)TerrainSize.Y);
         writer.Write(TexelDensity);
         writer.Write(1f);
-        writer.Write(Unk0);
+        writer.Write(HeightPrecision);
         writer.Write(HeightRange);
         foreach (var i in CollisionData)
             writer.Write((ushort)(i * 32768));
         writer.Write(Materials.Count);
         writer.WriteArray(Materials.ToArray());
         foreach (var i in MaterialData)
-            writer.Write((byte)(i * 255));
+            writer.Write(i);
         long fileSize = writer.Position;
         writer.WriteAt(fileSize, writer.GetOffset("fileSize"));
         writer.Dispose();

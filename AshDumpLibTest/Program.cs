@@ -42,7 +42,10 @@ string filepath = Console.ReadLine();
 //ObjectWorld gedit = new(filepath);
 //Reflection rfl = new(filepath, rflName: "BossRifleConfig");
 //NeedleShader needleShader = new(filepath);
-Animator asm = new(filepath);
-asm.SaveToFile(filepath + "1");
+//Animator asm = new(filepath);
+//asm.SaveToFile(filepath + "1");
+PAC pAC = new(filepath);
+pAC.parseFiles = false;
+pAC.SaveToFile(filepath + "test.pac");
 
 Console.WriteLine("test");
