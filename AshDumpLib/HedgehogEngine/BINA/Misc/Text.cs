@@ -2,7 +2,7 @@
 using AshDumpLib.Helpers.Archives;
 using System.Reflection.PortableExecutable;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Misc;
 
 public class Text : IFile
 {
@@ -30,7 +30,7 @@ public class Text : IFile
         long unk2 = reader.Read<long>();
         reader.Jump(dataOffset, SeekOrigin.Begin);
 
-        for(int i = 0; i < amount; i++)
+        for (int i = 0; i < amount; i++)
         {
             Entry entry = new();
             entry.Read(reader);
@@ -83,10 +83,10 @@ public class Text : IFile
                     Text += reader.ReadString(StringBinaryFormat.FixedLength, 1);
                     reader.Skip(1);
                 }
-                    
+
             });
             long characterPtr = reader.Read<long>();
-            if(characterPtr != 0)
+            if (characterPtr != 0)
             {
                 reader.ReadAtOffset(characterPtr + 64, () =>
                 {
@@ -118,7 +118,7 @@ public class Text : IFile
         public void FinishWrite(BINAWriter writer)
         {
             writer.SetOffset(Key + Text + Text.Length);
-            foreach(var i in Text.ToArray())
+            foreach (var i in Text.ToArray())
             {
                 writer.Write((byte)i);
                 writer.WriteNulls(1);
@@ -132,7 +132,7 @@ public class Text : IFile
             writer.SetOffset(Key + Text + Characters.Count + "data");
             foreach (var i in Characters)
                 writer.AddOffset(Key + Text + Characters.Count + "data" + i.Name + i.Type);
-            foreach(var i in Characters)
+            foreach (var i in Characters)
             {
                 writer.SetOffset(Key + Text + Characters.Count + "data" + i.Name + i.Type);
                 i.Write(writer);
@@ -166,7 +166,7 @@ public class Text : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            
+
         }
     }
 
@@ -197,7 +197,7 @@ public class Text : IFile
                 long fontPtr = reader.Read<long>();
                 long layoutPtr = reader.Read<long>();
                 long unkPtr = reader.Read<long>();
-                if(fontPtr > 0)
+                if (fontPtr > 0)
                 {
                     reader.ReadAtOffset(fontPtr + 64, () =>
                     {
@@ -210,7 +210,7 @@ public class Text : IFile
                         long unkEnumPtr = reader.Read<long>();
                         long unk3Ptr = reader.Read<long>();
                         long unk4Ptr = reader.Read<long>();
-                        if(fontSizePtr > 0)
+                        if (fontSizePtr > 0)
                             FontSize = reader.ReadValueAtOffset<float>(fontSizePtr);
                         if (unkPtr > 0)
                             unk = reader.ReadValueAtOffset<long>(unkPtr);
@@ -226,13 +226,13 @@ public class Text : IFile
                             unk4 = reader.ReadValueAtOffset<long>(unk4Ptr);
                     });
                 }
-                if(layoutPtr > 0)
+                if (layoutPtr > 0)
                 {
                     reader.ReadAtOffset(layoutPtr + 64, () =>
                     {
                         LayoutName = reader.ReadStringTableEntry();
                         long[] unkPtrs = reader.ReadArray<long>(10);
-                        for(int i = 0; i < 10; i++)
+                        for (int i = 0; i < 10; i++)
                         {
                             if (unkPtrs[i] > 0)
                             {
@@ -247,10 +247,10 @@ public class Text : IFile
                                         break;
 
                                     default:
-                                        iUnks[i-2] = reader.ReadValueAtOffset<int>(unkPtrs[i]);
+                                        iUnks[i - 2] = reader.ReadValueAtOffset<int>(unkPtrs[i]);
                                         break;
                                 }
-                            }       
+                            }
                         }
                     });
                 }
@@ -316,7 +316,7 @@ public class Text : IFile
                         break;
 
                     default:
-                        writer.Write(iUnks[i-2]);
+                        writer.Write(iUnks[i - 2]);
                         break;
                 }
                 writer.Align(8);

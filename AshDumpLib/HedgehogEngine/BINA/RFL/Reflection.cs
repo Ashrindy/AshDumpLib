@@ -6,7 +6,7 @@ using Amicitia.IO.Binary;
 using static AshDumpLib.HedgehogEngine.MathA;
 using System.Security.AccessControl;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.RFL;
 
 public class Reflection : IFile
 {
@@ -159,7 +159,7 @@ public class Reflection : IFile
         {
             subtype = type;
             type = "array";
-        } 
+        }
         switch (type)
         {
             case "bool":
@@ -282,7 +282,7 @@ public class Reflection : IFile
             default:
                 if (type.Contains("::"))
                 {
-                    if(template.enums.ContainsKey(type))
+                    if (template.enums.ContainsKey(type))
                     {
                         EnumValue eValue = new();
                         switch (template.enums[type].type)
@@ -399,7 +399,7 @@ public class Reflection : IFile
         switch (field.type)
         {
             case "bool":
-                writer.Write(((bool)value) ? (byte)1 : (byte)0);
+                writer.Write((bool)value ? (byte)1 : (byte)0);
                 break;
 
             case "float32":
@@ -496,7 +496,7 @@ public class Reflection : IFile
                                 break;
 
                             case "int32":
-                                writer.Write((int)((EnumValue)value).Selected);
+                                writer.Write(((EnumValue)value).Selected);
                                 break;
                         }
                     }

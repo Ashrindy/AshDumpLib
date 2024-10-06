@@ -3,7 +3,7 @@ using Amicitia.IO.Binary;
 using System.Reflection.PortableExecutable;
 using System.Xml.Linq;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Misc;
 public class ShaderList : IFile
 {
     public const string FileExtension = ".shader-list";
@@ -64,7 +64,7 @@ public class ShaderList : IFile
         foreach (var i in Inputs)
             i.Write(writer);
         writer.SetOffset("shadertableOffset");
-        foreach(var i in Shaders)
+        foreach (var i in Shaders)
             i.Write(writer);
         writer.FinishWrite();
         writer.Dispose();

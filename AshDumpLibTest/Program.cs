@@ -1,9 +1,9 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using AshDumpLib.CastleSiege;
 using AshDumpLib.HedgehogEngine.Archives;
-using AshDumpLib.HedgehogEngine.BINA;
 using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.HedgehogEngine.Needle;
+using AshDumpLib.HedgehogEngine.BINA.RFL;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();

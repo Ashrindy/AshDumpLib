@@ -1,7 +1,7 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Density;
 
 public class DensitySetting : IFile
 {

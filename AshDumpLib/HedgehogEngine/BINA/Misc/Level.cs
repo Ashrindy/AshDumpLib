@@ -1,7 +1,7 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using Amicitia.IO.Binary;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Misc;
 
 //This was made for a joke
 

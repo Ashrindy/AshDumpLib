@@ -1,6 +1,6 @@
 ﻿using AshDumpLib.Helpers.Archives;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Terrain;
 
 public class TerrainMaterial : IFile
 {
@@ -25,7 +25,7 @@ public class TerrainMaterial : IFile
         long dataPtr = reader.Read<long>();
         long count = reader.Read<long>();
         reader.Jump(dataPtr, SeekOrigin.Begin);
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             Material mat = new();
             mat.Read(reader);
@@ -42,7 +42,7 @@ public class TerrainMaterial : IFile
         writer.AddOffset("dataPtr");
         writer.Write(Materials.Count);
         writer.SetOffset("dataPtr");
-        foreach(var i in Materials)
+        foreach (var i in Materials)
             i.Write(writer);
         writer.Dispose();
     }
@@ -77,8 +77,8 @@ public class TerrainMaterial : IFile
             writer.WriteStringTableEntry(DetailDiffuseTextureName);
             writer.WriteStringTableEntry(DetailNormalTextureName);
             writer.WriteStringTableEntry(DetailHeightTextureName);
-            writer.WriteStringTableEntry(DiffuseTextureName); 
-            writer.WriteStringTableEntry(NormalTextureName); 
+            writer.WriteStringTableEntry(DiffuseTextureName);
+            writer.WriteStringTableEntry(NormalTextureName);
             writer.WriteStringTableEntry(SpecularTextureName);
         }
 

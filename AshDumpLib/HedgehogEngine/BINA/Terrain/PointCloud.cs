@@ -2,19 +2,19 @@
 using Amicitia.IO.Binary;
 using System.Numerics;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Terrain;
 
-public class DensityPointCloud : IFile
+public class PointCloud : IFile
 {
-    public const string FileExtension = ".densitypointcloud";
-    public const string BINASignature = "EIYD";
+    public const string FileExtension = ".pcmodel, .pcrt, .pccol";
+    public const string BINASignature = "CPIC";
 
-    public int Version = 4;
-    public List<FoliagePoint> FoliagePoints = new();
+    public int Version = 2;
+    public List<Point> Points = new();
 
-    public DensityPointCloud() { }
+    public PointCloud() { }
 
-    public DensityPointCloud(string filename) => Open(filename);
+    public PointCloud(string filename) => Open(filename);
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
     public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }
@@ -25,15 +25,14 @@ public class DensityPointCloud : IFile
         reader.ReadSignature(BINASignature);
 
         Version = reader.Read<int>();
-        long unk0 = reader.Read<long>();
         long dataPtr = reader.Read<long>();
         long pointCount = reader.Read<long>();
         reader.Jump(dataPtr, SeekOrigin.Begin);
         for (int i = 0; i < pointCount; i++)
         {
-            FoliagePoint foliagepoint = new();
-            foliagepoint.Read(reader);
-            FoliagePoints.Add(foliagepoint);
+            Point point = new();
+            point.Read(reader);
+            Points.Add(point);
         }
 
         reader.Dispose();
@@ -45,49 +44,44 @@ public class DensityPointCloud : IFile
         writer.WriteSignature(BINASignature);
 
         writer.Write(Version);
-        writer.Write((long)2);
         writer.AddOffset("dataOffset");
-        writer.Write(FoliagePoints.Count);
+        writer.Write(Points.Count);
         writer.SetOffset("dataOffset");
-        foreach (var i in FoliagePoints)
+        foreach (var i in Points)
             i.Write(writer);
 
         writer.FinishWrite();
         writer.Dispose();
     }
 
-    public class FoliagePoint : IBINASerializable
+    public class Point : IBINASerializable
     {
-        public int ID = 0;
+        public string InstanceName = "";
+        public string ResourceName = "";
         public Vector3 Position = new(0, 0, 0);
-        public Quaternion Rotation = new(0, 0, 0, 1);
+        public Vector3 Rotation = new(0, 0, 0);
         public Vector3 Scale = new(1, 1, 1);
-        public int Unk = 0;
 
         public void Read(BINAReader reader)
         {
+            InstanceName = reader.ReadStringTableEntry();
+            ResourceName = reader.ReadStringTableEntry();
             Position = reader.Read<Vector3>();
+            Rotation = reader.Read<Vector3>();
             reader.Skip(4);
             Scale = reader.Read<Vector3>();
-            reader.Skip(4);
-            Rotation = reader.Read<Quaternion>();
-            reader.Skip(16);
-            Unk = reader.Read<int>();
-            ID = reader.Read<int>();
-            reader.Skip(12);
+            reader.Skip(8);
         }
 
         public void Write(BINAWriter writer)
         {
+            writer.WriteStringTableEntry(InstanceName);
+            writer.WriteStringTableEntry(ResourceName);
             writer.Write(Position);
-            writer.WriteNulls(4);
-            writer.Write(Scale);
-            writer.WriteNulls(4);
             writer.Write(Rotation);
-            writer.WriteNulls(16);
-            writer.Write(Unk);
-            writer.Write(ID);
-            writer.WriteNulls(12);
+            writer.Write(1);
+            writer.Write(Scale);
+            writer.WriteNulls(8);
         }
 
         public void FinishWrite(BINAWriter writer)

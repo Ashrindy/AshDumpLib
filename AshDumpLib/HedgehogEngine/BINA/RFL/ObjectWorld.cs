@@ -3,9 +3,8 @@ using Amicitia.IO.Binary;
 using System.Numerics;
 using Newtonsoft.Json;
 using libHSON;
-using static AshDumpLib.HedgehogEngine.BINA.ObjectWorld.Object;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.RFL;
 
 public class ObjectWorld : IFile
 {
@@ -39,7 +38,7 @@ public class ObjectWorld : IFile
         long objectCount = reader.Read<long>();
         long objectCount1 = reader.Read<long>();
         reader.Jump(dataPtr, SeekOrigin.Begin);
-        for(int i = 0; i < objectCount; i++)
+        for (int i = 0; i < objectCount; i++)
         {
             Object obj = new();
             obj.Read(reader);
@@ -61,14 +60,14 @@ public class ObjectWorld : IFile
         writer.Write((long)Objects.Count);
         writer.WriteNulls(8);
         writer.SetOffset("dataPtr");
-        foreach(var i in Objects)
+        foreach (var i in Objects)
             writer.AddOffset(i.ObjectName + i.ID.ToString());
         foreach (var i in Objects)
             i.Write(writer);
         foreach (var i in Objects)
             i.FinishWrite(writer);
-        foreach(var i in Objects)
-            foreach(var x in i.Tags)
+        foreach (var i in Objects)
+            foreach (var x in i.Tags)
                 x.FinishWrite(writer);
 
         writer.FinishWrite();
@@ -92,7 +91,7 @@ public class ObjectWorld : IFile
 
         static int GetAlignment(Template.StructTemplateField field, int fileVersion)
         {
-            if(field.alignment == null)
+            if (field.alignment == null)
             {
                 int align = 1;
                 switch (field.type)
@@ -116,12 +115,12 @@ public class ObjectWorld : IFile
                     case "object_reference":
                         if (fileVersion == 2)
                             align = 4;
-                        else if(fileVersion == 3)
+                        else if (fileVersion == 3)
                             align = 8;
                         break;
 
                     case "array":
-                        if(field.array_size == null)
+                        if (field.array_size == null)
                             align = 8;
                         else
                             align = GetAlignment(new() { alignment = null, type = field.subtype }, fileVersion);
@@ -239,7 +238,7 @@ public class ObjectWorld : IFile
                         arrayLength = reader.Read<long>();
                         long arrayLength2 = reader.Read<long>();
                         reader.Skip(8);
-                        if(arrayLength > 0 && arrayPtr > 0)
+                        if (arrayLength > 0 && arrayPtr > 0)
                         {
                             arrayValue = new object[arrayLength];
                             reader.ReadAtOffset(arrayPtr + 64, () =>
@@ -260,14 +259,14 @@ public class ObjectWorld : IFile
                     break;
 
                 case "object_reference":
-                    if(reader.FileVersion == 2)
+                    if (reader.FileVersion == 2)
                     {
                         byte[] rawValue = reader.ReadArray<byte>(4);
                         byte[] rawId = new byte[16];
                         rawValue.CopyTo(rawId, 0);
                         value = new Guid(rawId);
                     }
-                    else if(reader.FileVersion == 3)
+                    else if (reader.FileVersion == 3)
                         value = reader.Read<Guid>();
                     break;
 
@@ -371,12 +370,12 @@ public class ObjectWorld : IFile
                     {
                         isStruct = true;
                         value = ReadStruct(reader, template.structs[type], type);
-                    }  
+                    }
                     break;
             }
             if (field.alignment != null && !isStruct)
                 reader.Align((int)field.alignment);
-            else if(isStruct)
+            else if (isStruct)
                 reader.Align(GetAlignment(field, reader.FileVersion));
             return value;
         }
@@ -386,7 +385,7 @@ public class ObjectWorld : IFile
             Dictionary<string, object> parameters = new();
             if (str.parent != null)
                 parameters.Add(str.parent, ReadStruct(reader, template.structs[str.parent], str.parent));
-            if(str.fields != null)
+            if (str.fields != null)
             {
                 foreach (var i in str.fields)
                     parameters.Add(i.name, ReadField(reader, i.type, i, parameters));
@@ -403,7 +402,7 @@ public class ObjectWorld : IFile
             switch (field.type)
             {
                 case "bool":
-                    writer.Write((Convert.ToBoolean(value)) ? (byte)1 : (byte)0);
+                    writer.Write(Convert.ToBoolean(value) ? (byte)1 : (byte)0);
                     break;
 
                 case "float32":
@@ -457,7 +456,7 @@ public class ObjectWorld : IFile
                     else
                     {
                         for (int i = 0; i < (int)field.array_size; i++)
-                            WriteField(writer, new() { name = field.name, type = field.subtype}, ((object[])value)[i]);
+                            WriteField(writer, new() { name = field.name, type = field.subtype }, ((object[])value)[i]);
                     }
                     break;
 
@@ -486,23 +485,23 @@ public class ObjectWorld : IFile
                         switch (template.enums[field.type].type)
                         {
                             case "uint8" or "int8":
-                                writer.Write((byte)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
+                                writer.Write((byte)GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected);
                                 break;
 
                             case "uint":
-                                writer.Write((ushort)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
+                                writer.Write((ushort)GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected);
                                 break;
 
                             case "int16":
-                                writer.Write((short)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
+                                writer.Write((short)GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected);
                                 break;
 
                             case "uint32":
-                                writer.Write((uint)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
+                                writer.Write((uint)GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected);
                                 break;
 
                             case "int32":
-                                writer.Write((int)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
+                                writer.Write(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected);
                                 break;
                         }
                     }
@@ -524,15 +523,15 @@ public class ObjectWorld : IFile
             if (template.structs[strName].parent != null)
                 WriteStruct(writer, (Dictionary<string, object>)str[template.structs[strName].parent], template.structs[strName].parent);
             int start = str.Keys.ToList().IndexOf(template.structs[strName].fields[0].name);
-            for(int i = start; i < str.Count; i++)
-                WriteField(writer, template.structs[strName].fields[i-start], str.ElementAt(i).Value);
+            for (int i = start; i < str.Count; i++)
+                WriteField(writer, template.structs[strName].fields[i - start], str.ElementAt(i).Value);
         }
         #endregion
 
         public void Read(BINAReader reader)
         {
             long ptr = reader.Read<long>();
-            reader.ReadAtOffset(ptr + 64, () => 
+            reader.ReadAtOffset(ptr + 64, () =>
             {
                 reader.Skip(8);
                 TypeName = reader.ReadStringTableEntry();
@@ -543,7 +542,7 @@ public class ObjectWorld : IFile
                     ID = reader.Read<Guid>();
                     ParentID = reader.Read<Guid>();
                 }
-                else if(reader.FileVersion == 2)
+                else if (reader.FileVersion == 2)
                 {
                     byte[] id = new byte[16];
                     byte[] idRaw = reader.ReadArray<byte>(4);
@@ -564,7 +563,7 @@ public class ObjectWorld : IFile
                 reader.Skip(8);
                 reader.ReadAtOffset(tagsPtr + 64, () =>
                 {
-                    for(int i = 0; i < tagsCount; i++)
+                    for (int i = 0; i < tagsCount; i++)
                     {
                         Tag tag = new();
                         tag.Read(reader);
@@ -592,11 +591,11 @@ public class ObjectWorld : IFile
                 writer.Write(ID);
                 writer.Write(ParentID);
             }
-            else if(writer.FileVersion == 2)
+            else if (writer.FileVersion == 2)
             {
                 writer.WriteStringTableEntry(ObjectName);
-                writer.WriteArray(new byte[4] { ID.ToByteArray()[0], ID.ToByteArray()[1], ID.ToByteArray()[2], ID.ToByteArray()[3]});
-                writer.WriteArray(new byte[4] { ParentID.ToByteArray()[0], ParentID.ToByteArray()[1], ParentID.ToByteArray()[2], ParentID.ToByteArray()[3]});
+                writer.WriteArray(new byte[4] { ID.ToByteArray()[0], ID.ToByteArray()[1], ID.ToByteArray()[2], ID.ToByteArray()[3] });
+                writer.WriteArray(new byte[4] { ParentID.ToByteArray()[0], ParentID.ToByteArray()[1], ParentID.ToByteArray()[2], ParentID.ToByteArray()[3] });
             }
             writer.Write(Position);
             writer.Write(Rotation);
@@ -621,7 +620,7 @@ public class ObjectWorld : IFile
         public void FinishWrite(BINAWriter writer)
         {
             writer.SetOffset(ObjectName + ID.ToString() + "params");
-            if(Parameters.Count > 0)
+            if (Parameters.Count > 0)
             {
                 WriteStruct(writer, (Dictionary<string, object>)Parameters.ElementAt(0).Value, Parameters.ElementAt(0).Key);
                 foreach (var i in paramArrays)
@@ -694,7 +693,7 @@ public class ObjectWorld : IFile
                 switch (field.type)
                 {
                     case "bool":
-                        writer.Write((Convert.ToBoolean(value)) ? (byte)1 : (byte)0);
+                        writer.Write(Convert.ToBoolean(value) ? (byte)1 : (byte)0);
                         break;
 
                     case "float32":
@@ -793,7 +792,7 @@ public class ObjectWorld : IFile
                                     break;
 
                                 case "int32":
-                                    writer.Write((int)((EnumValue)value).Selected);
+                                    writer.Write(((EnumValue)value).Selected);
                                     break;
                             }
                         }
@@ -812,7 +811,7 @@ public class ObjectWorld : IFile
 
             void WriteStruct(BINAWriter writer, Dictionary<string, object> str, string strName)
             {
-                if(template.tags == null || (template.tags != null && !template.tags.ContainsKey(strName)))
+                if (template.tags == null || template.tags != null && !template.tags.ContainsKey(strName))
                 {
                     if (template.structs[strName].parent != null)
                         WriteStruct(writer, (Dictionary<string, object>)str[template.structs[strName].parent], template.structs[strName].parent);
@@ -820,13 +819,13 @@ public class ObjectWorld : IFile
                     for (int i = start; i < str.Count; i++)
                         WriteField(writer, template.structs[strName].fields[i - start], str.ElementAt(i).Value);
                 }
-                else if(template.tags != null)
+                else if (template.tags != null)
                 {
                     if (template.tags[strName].parent != null)
                         WriteStruct(writer, (Dictionary<string, object>)str[template.tags[strName].parent], template.tags[strName].parent);
                     int start = str.Keys.ToList().IndexOf(template.tags[strName].fields[0].name);
                     for (int i = start; i < str.Count; i++)
-                        WriteField(writer, template.tags[strName].fields[i - start], str.ElementAt(i).Value);  
+                        WriteField(writer, template.tags[strName].fields[i - start], str.ElementAt(i).Value);
                 }
             }
         }
@@ -842,10 +841,10 @@ public class ObjectWorld : IFile
             EnumValue enumValue = new();
             enumValue.Values = new();
             int x = 0;
-            foreach(var i in templ.values)
+            foreach (var i in templ.values)
             {
                 enumValue.Values.Add(i.Value.value, i.Key);
-                if(enumValue.Selected == null)
+                if (enumValue.Selected == null)
                     if (i.Key == selected)
                         enumValue.Selected = x;
                 x++;
@@ -860,7 +859,7 @@ public class ObjectWorld : IFile
         public static int GetVersionFromTemplate(string version)
         {
             int ver = 3;
-            switch(version)
+            switch (version)
             {
                 case "gedit_v2":
                     ver = 2;
@@ -980,25 +979,25 @@ public class ObjectWorld : IFile
             Parameter param = new();
             Type type = i.Value.GetType();
             if (type == typeof(byte))
-                param = new(((byte)i.Value));
+                param = new((byte)i.Value);
             else if (type == typeof(bool))
-                param = new(((bool)i.Value));
+                param = new((bool)i.Value);
             else if (type == typeof(ushort))
-                param = new(((ushort)i.Value));
+                param = new((ushort)i.Value);
             else if (type == typeof(short))
-                param = new(((short)i.Value));
+                param = new((short)i.Value);
             else if (type == typeof(uint))
-                param = new(((uint)i.Value));
+                param = new((uint)i.Value);
             else if (type == typeof(int))
-                param = new(((int)i.Value));
+                param = new((int)i.Value);
             else if (type == typeof(ulong))
-                param = new(((ulong)i.Value));
+                param = new((ulong)i.Value);
             else if (type == typeof(long))
-                param = new(((long)i.Value));
+                param = new((long)i.Value);
             else if (type == typeof(float))
-                param = new(((float)i.Value));
+                param = new((float)i.Value);
             else if (type == typeof(double))
-                param = new(((double)i.Value));
+                param = new((double)i.Value);
             else if (type == typeof(Object.EnumValue))
                 param = new(((Object.EnumValue)i.Value).Values[((Object.EnumValue)i.Value).Selected]);
             else if (type == typeof(string))
@@ -1015,25 +1014,25 @@ public class ObjectWorld : IFile
                     Parameter paramItem = new();
                     Type typee = x.GetType();
                     if (typee == typeof(byte))
-                        paramItem = new(((byte)x));
+                        paramItem = new((byte)x);
                     else if (typee == typeof(bool))
-                        paramItem = new(((bool)x));
+                        paramItem = new((bool)x);
                     else if (typee == typeof(ushort))
-                        paramItem = new(((ushort)x));
+                        paramItem = new((ushort)x);
                     else if (typee == typeof(short))
-                        paramItem = new(((short)x));
+                        paramItem = new((short)x);
                     else if (typee == typeof(uint))
-                        paramItem = new(((uint)x));
+                        paramItem = new((uint)x);
                     else if (typee == typeof(int))
-                        paramItem = new(((int)x));
+                        paramItem = new((int)x);
                     else if (typee == typeof(ulong))
-                        paramItem = new(((ulong)x));
+                        paramItem = new((ulong)x);
                     else if (typee == typeof(long))
-                        paramItem = new(((long)x));
+                        paramItem = new((long)x);
                     else if (typee == typeof(float))
-                        paramItem = new(((float)x));
+                        paramItem = new((float)x);
                     else if (typee == typeof(double))
-                        paramItem = new(((double)x));
+                        paramItem = new((double)x);
                     else if (typee == typeof(Object.EnumValue))
                         paramItem = new(((Object.EnumValue)x).Values[((Object.EnumValue)x).Selected]);
                     else if (typee == typeof(string))
@@ -1053,7 +1052,7 @@ public class ObjectWorld : IFile
     #endregion
 
     #region FromHson
-    public static ObjectWorld ToGedit(Project project) 
+    public static ObjectWorld ToGedit(Project project)
     {
         template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
         ObjectWorld gedit = new();
@@ -1106,18 +1105,18 @@ public class ObjectWorld : IFile
                 value = param.Item2.ValueSignedInteger;
                 break;
 
-            case ParameterType.UnsignedInteger: 
-                value = param.Item2.ValueUnsignedInteger; 
+            case ParameterType.UnsignedInteger:
+                value = param.Item2.ValueUnsignedInteger;
                 break;
 
             case ParameterType.FloatingPoint:
-                value = param.Item2.ValueFloatingPoint; 
+                value = param.Item2.ValueFloatingPoint;
                 break;
 
             case ParameterType.String:
                 if (template.structs.ContainsKey(strName))
                 {
-                    foreach(var i in template.structs[strName].fields)
+                    foreach (var i in template.structs[strName].fields)
                     {
                         if (i.name == param.Item1 && template.enums.ContainsKey(i.type))
                         {
@@ -1132,12 +1131,12 @@ public class ObjectWorld : IFile
                     }
                 }
                 else
-                    value = param.Item2.ValueString; 
+                    value = param.Item2.ValueString;
                 break;
 
             case ParameterType.Array:
                 value = new object[param.Item2.ValueArray.Count];
-                for(int i = 0; i < param.Item2.ValueArray.Count; i++)
+                for (int i = 0; i < param.Item2.ValueArray.Count; i++)
                     ((object[])value)[i] = CreateGeditParameterObject(new(param.Item1, param.Item2.ValueArray[i]), template, strName);
                 break;
 

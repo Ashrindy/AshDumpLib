@@ -1,7 +1,7 @@
 ﻿using Amicitia.IO.Binary;
 using AshDumpLib.Helpers.Archives;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Animation;
 
 //Taken from Adel's Blender Addon
 
@@ -51,14 +51,14 @@ public class AnimationPXD : IFile
         reader.Jump(mainOffset, SeekOrigin.Begin);
         MainCompressed = reader.ReadArray<byte>(mainBufferLength);
 
-        if(rootOffset != 0)
+        if (rootOffset != 0)
         {
             reader.Jump(rootOffset, SeekOrigin.Begin);
             int rootBufferLength = reader.Read<int>();
             reader.Jump(rootOffset, SeekOrigin.Begin);
             RootCompressed = reader.ReadArray<byte>(rootBufferLength);
         }
-        
+
         reader.Dispose();
     }
 

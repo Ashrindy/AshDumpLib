@@ -2,7 +2,7 @@
 using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Animation;
 
 public class SkeletonPXD : IFile
 {
@@ -38,7 +38,7 @@ public class SkeletonPXD : IFile
         reader.Skip(0x10);
 
         reader.Jump(parentIndexOffset, SeekOrigin.Begin);
-        for(int i = 0; i < parentIndexCount; i++)
+        for (int i = 0; i < parentIndexCount; i++)
         {
             Bone bone = new Bone();
             bone.ParentIndex = reader.Read<ushort>();
@@ -46,14 +46,14 @@ public class SkeletonPXD : IFile
         }
 
         reader.Jump(boneNameTableOffset, SeekOrigin.Begin);
-        for(int i = 0; i < boneNameTableCount; i++)
+        for (int i = 0; i < boneNameTableCount; i++)
         {
             Bones[i].Name = reader.ReadStringTableEntry();
             reader.Skip(0x8);
         }
 
         reader.Jump(boneMatrixTableOffset, SeekOrigin.Begin);
-        for(int i = 0; i < boneMatrixTableCount; i++)
+        for (int i = 0; i < boneMatrixTableCount; i++)
         {
             Bones[i].Position = reader.Read<Vector3>();
             reader.Skip(0x4);
@@ -94,14 +94,14 @@ public class SkeletonPXD : IFile
             writer.Write((ushort)bone.ParentIndex);
 
         writer.SetOffset("boneNames");
-        foreach(var bone in Bones)
+        foreach (var bone in Bones)
         {
             writer.WriteStringTableEntry(bone.Name);
             writer.Write<long>(0);
         }
 
         writer.SetOffset("boneTransforms");
-        foreach(var bone in Bones)
+        foreach (var bone in Bones)
         {
             writer.Write(bone.Position);
             writer.Write(0);

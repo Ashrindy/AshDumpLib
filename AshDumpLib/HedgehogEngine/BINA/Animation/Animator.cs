@@ -3,7 +3,7 @@ using Amicitia.IO.Binary;
 using System.Drawing;
 using System.Numerics;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Animation;
 
 // Original research by ik-01, finished by angryzor!
 
@@ -132,7 +132,7 @@ public class Animator : IFile
             writer.WriteStringTableEntry(Settings.ResourceName);
             writer.Write(Settings.Start);
             writer.Write(Settings.End);
-            writer.Write(Settings.Speed); 
+            writer.Write(Settings.Speed);
             writer.Write(Settings.Flags);
             writer.Write(Settings.Loop ? (byte)1 : (byte)0);
             writer.Align(4);
@@ -240,7 +240,7 @@ public class Animator : IFile
             writer.Write(EventOffset);
             writer.Write(TransitionArrayIndex);
             TransitionData.Write(writer);
-            writer.Write(FlagIndexCount); 
+            writer.Write(FlagIndexCount);
             writer.Write(FlagIndexOffset);
             writer.Align(8);
         }
@@ -530,13 +530,13 @@ public class Animator : IFile
         public void FinishWrite(BINAWriter writer)
         {
             writer.SetOffset("nodes" + id);
-            foreach(var i in Nodes)
+            foreach (var i in Nodes)
                 writer.Write(i);
             writer.SetOffset("clips" + id);
-            foreach(var i in ClipIndices)
+            foreach (var i in ClipIndices)
                 writer.Write(i);
             writer.SetOffset("triangles" + id);
-            foreach(var i in Triangles)
+            foreach (var i in Triangles)
             {
                 writer.WriteArray(i.NodeIndices);
                 writer.Write(i.unk);

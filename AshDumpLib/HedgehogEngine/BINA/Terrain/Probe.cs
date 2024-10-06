@@ -1,7 +1,7 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using System.Numerics;
 
-namespace AshDumpLib.HedgehogEngine.BINA;
+namespace AshDumpLib.HedgehogEngine.BINA.Terrain;
 
 public class Probe : IFile
 {
@@ -26,7 +26,7 @@ public class Probe : IFile
         long tableOffset = reader.Read<long>();
         long count = reader.Read<long>();
         reader.Jump(tableOffset, SeekOrigin.Begin);
-        for(int i = 0; i < count; i++) 
+        for (int i = 0; i < count; i++)
         {
             ProbeItem item = new ProbeItem();
             item.Read(reader);
@@ -43,7 +43,7 @@ public class Probe : IFile
         writer.AddOffset("table");
         writer.Write<long>(Probes.Count);
         writer.SetOffset("table");
-        foreach(var i in Probes)
+        foreach (var i in Probes)
             i.Write(writer);
         writer.FinishWrite();
         writer.Dispose();

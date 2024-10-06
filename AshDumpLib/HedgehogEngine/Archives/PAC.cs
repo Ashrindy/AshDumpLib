@@ -1,5 +1,8 @@
 ﻿using Amicitia.IO.Binary;
-using AshDumpLib.HedgehogEngine.BINA;
+using AshDumpLib.HedgehogEngine.BINA.Animation;
+using AshDumpLib.HedgehogEngine.BINA.Density;
+using AshDumpLib.HedgehogEngine.BINA.Misc;
+using AshDumpLib.HedgehogEngine.BINA.Terrain;
 using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.Helpers.Archives;
 using K4os.Compression.LZ4;
