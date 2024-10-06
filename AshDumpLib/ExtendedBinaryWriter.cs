@@ -8,6 +8,7 @@ namespace AshDumpLib
     public class ExtendedBinaryWriter : BinaryObjectWriter
     {
         public Dictionary<long, long> StringTableOffsets = new();
+        Dictionary<string, long> stringTableRaw = new();
         public string StringTable = "";
         public Dictionary<string, long> Offsets = new();
         public Dictionary<string, bool> OffsetsWrite = new();
@@ -28,12 +29,16 @@ namespace AshDumpLib
         {
         }
 
-        public virtual void WriteStringTableEntry(string entry)
+        public virtual void WriteStringTableEntry(string rawEntry)
         {
             //Adds offset to the OffsetTable
-            Offsets.Add(entry + "." + Position, Position - GenericOffset);
+            Offsets.Add(rawEntry + "." + Position, Position - GenericOffset);
+            string entry = rawEntry;
 
-            if (!StringTable.Contains(entry + "\0"))
+            if (rawEntry == "")
+                entry = "\0";
+
+            if (!stringTableRaw.ContainsKey(entry))
             {
                 //Adds offset to the StringTableOffset for later correction
                 StringTableOffsets.Add(Position, StringTable.Length);
@@ -42,6 +47,7 @@ namespace AshDumpLib
                 OffsetsWrite.Add(entry + "." + Position, true);
 
                 //Writes the temporary offset in the StringTable
+                stringTableRaw.Add(entry, StringTable.Length);
                 Write<long>(StringTable.Length);
                 foreach (var i in entry.ToCharArray())
                     StringTable += i;
@@ -51,13 +57,13 @@ namespace AshDumpLib
             else
             {
                 //Adds offset to the StringTableOffset for later correction
-                StringTableOffsets.Add(Position, StringTable.IndexOf(entry));
+                StringTableOffsets.Add(Position, stringTableRaw[entry]);
 
                 //Adds offset to the OffsetsWrite dictionary
                 OffsetsWrite.Add(entry + "." + Position, true);
 
                 //Writes the temporary offset in the StringTable
-                Write<long>(StringTable.IndexOf(entry));
+                Write<long>(stringTableRaw[entry]);
             }
         }
 

@@ -3,10 +3,7 @@ using Amicitia.IO.Binary;
 using System.Numerics;
 using Newtonsoft.Json;
 using libHSON;
-using System.Drawing;
-using System.Reflection.PortableExecutable;
-using System.Diagnostics;
-using System.Linq;
+using static AshDumpLib.HedgehogEngine.BINA.ObjectWorld.Object;
 
 namespace AshDumpLib.HedgehogEngine.BINA;
 
@@ -17,8 +14,8 @@ public class ObjectWorld : IFile
     public List<Object> Objects = new();
 
     //Using JSON templates from HedgeLib++
-    public string TemplateFilePath = "frontiers.json";
-    Template.TemplateJSON template;
+    public static string TemplateFilePath = "frontiers.json";
+    public static Template.TemplateJSON template;
 
     public int FileVersion = 3;
 
@@ -45,7 +42,6 @@ public class ObjectWorld : IFile
         for(int i = 0; i < objectCount; i++)
         {
             Object obj = new();
-            obj.template = template;
             obj.Read(reader);
             Objects.Add(obj);
         }
@@ -71,6 +67,9 @@ public class ObjectWorld : IFile
             i.Write(writer);
         foreach (var i in Objects)
             i.FinishWrite(writer);
+        foreach(var i in Objects)
+            foreach(var x in i.Tags)
+                x.FinishWrite(writer);
 
         writer.FinishWrite();
         writer.Dispose();
@@ -91,9 +90,7 @@ public class ObjectWorld : IFile
         public Dictionary<string, object> Parameters = new();
         Dictionary<Tuple<string, long>, object[]> paramArrays = new();
 
-        public Template.TemplateJSON template;
-
-        int GetAlignment(Template.StructTemplateField field, int fileVersion)
+        static int GetAlignment(Template.StructTemplateField field, int fileVersion)
         {
             if(field.alignment == null)
             {
@@ -180,7 +177,7 @@ public class ObjectWorld : IFile
         }
 
         #region ReadingParameters
-        object ReadField(BINAReader reader, string type, Template.StructTemplateField field, Dictionary<string, object> parent)
+        static object ReadField(BINAReader reader, string type, Template.StructTemplateField field, Dictionary<string, object> parent)
         {
             object value = null;
             reader.Align(GetAlignment(field, reader.FileVersion));
@@ -384,7 +381,7 @@ public class ObjectWorld : IFile
             return value;
         }
 
-        Dictionary<string, object> ReadStruct(BINAReader reader, Template.StructTemplate str, string structName)
+        static Dictionary<string, object> ReadStruct(BINAReader reader, Template.StructTemplate str, string structName)
         {
             Dictionary<string, object> parameters = new();
             if (str.parent != null)
@@ -406,39 +403,39 @@ public class ObjectWorld : IFile
             switch (field.type)
             {
                 case "bool":
-                    writer.Write(((bool)value) ? (byte)1 : (byte)0);
+                    writer.Write((Convert.ToBoolean(value)) ? (byte)1 : (byte)0);
                     break;
 
                 case "float32":
-                    writer.Write((float)value);
+                    writer.Write(Convert.ToSingle(value));
                     break;
 
                 case "uint8" or "int8":
-                    writer.Write((byte)value);
+                    writer.Write(Convert.ToByte(value));
                     break;
 
                 case "uint16":
-                    writer.Write((ushort)value);
+                    writer.Write(Convert.ToUInt16(value));
                     break;
 
                 case "int16":
-                    writer.Write((short)value);
+                    writer.Write(Convert.ToInt16(value));
                     break;
 
                 case "uint32":
-                    writer.Write((uint)value);
+                    writer.Write(Convert.ToUInt32(value));
                     break;
 
                 case "int32":
-                    writer.Write((int)value);
+                    writer.Write(Convert.ToInt32(value));
                     break;
 
                 case "uint64":
-                    writer.Write((ulong)value);
+                    writer.Write(Convert.ToUInt64(value));
                     break;
 
                 case "int64":
-                    writer.Write((long)value);
+                    writer.Write(Convert.ToInt64(value));
                     break;
 
                 case "string":
@@ -489,23 +486,23 @@ public class ObjectWorld : IFile
                         switch (template.enums[field.type].type)
                         {
                             case "uint8" or "int8":
-                                writer.Write((byte)((EnumValue)value).Selected);
+                                writer.Write((byte)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
                                 break;
 
                             case "uint":
-                                writer.Write((ushort)((EnumValue)value).Selected);
+                                writer.Write((ushort)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
                                 break;
 
                             case "int16":
-                                writer.Write((short)((EnumValue)value).Selected);
+                                writer.Write((short)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
                                 break;
 
                             case "uint32":
-                                writer.Write((uint)((EnumValue)value).Selected);
+                                writer.Write((uint)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
                                 break;
 
                             case "int32":
-                                writer.Write((int)((EnumValue)value).Selected);
+                                writer.Write((int)(GetEnumValueFromSelectedString((string)value, template.enums[field.type]).Selected));
                                 break;
                         }
                     }
@@ -539,16 +536,15 @@ public class ObjectWorld : IFile
             {
                 reader.Skip(8);
                 TypeName = reader.ReadStringTableEntry();
+                ObjectName = reader.ReadStringTableEntry();
                 if (reader.FileVersion == 3)
                 {
-                    ObjectName = reader.ReadStringTableEntry();
                     reader.Skip(8);
                     ID = reader.Read<Guid>();
                     ParentID = reader.Read<Guid>();
                 }
                 else if(reader.FileVersion == 2)
                 {
-                    ObjectName = reader.ReadStringTableEntry();
                     byte[] id = new byte[16];
                     byte[] idRaw = reader.ReadArray<byte>(4);
                     idRaw.CopyTo(id, 0);
@@ -635,14 +631,13 @@ public class ObjectWorld : IFile
                         WriteField(writer, new() { type = i.Key.Item1.Substring(i.Key.Item1.IndexOf('.') + 1) }, x);
                 }
             }
-            foreach(var i in Tags)
-                i.FinishWrite(writer);
         }
 
         public class Tag : IBINASerializable
         {
             public string Name = "";
-            public object Data;
+            public Dictionary<string, object> Parameters = new();
+            Dictionary<Tuple<string, long>, object[]> paramArrays = new();
             public Object Owner = new();
 
             public void Read(BINAReader reader)
@@ -654,16 +649,13 @@ public class ObjectWorld : IFile
                     Name = reader.ReadStringTableEntry();
                     long size = reader.Read<long>();
                     long dataPtr = reader.Read<long>();
-                    switch (Name)
+                    reader.ReadAtOffset(dataPtr + 64, () =>
                     {
-                        case "RangeSpawning":
-                            Data = reader.ReadArrayAtOffset<float>(dataPtr + 64, 2);
-                            break;
-
-                        default:
-                            Data = reader.ReadArrayAtOffset<byte>(dataPtr + 64, (int)size);
-                            break;
-                    }
+                        if (template.tags != null)
+                        {
+                            Parameters = ReadStruct(reader, template.tags[Name], Name);
+                        }
+                    });
                 });
             }
 
@@ -672,32 +664,169 @@ public class ObjectWorld : IFile
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name);
                 writer.WriteNulls(8);
                 writer.WriteStringTableEntry(Name);
-                switch (Name)
-                {
-                    case "RangeSpawning":
-                        writer.Write((long)8);
-                        break;
-
-                    default:
-                        writer.Write((long)((byte[])Data).Length);
-                        break;
-                }
+                writer.AddOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "datasize", false);
                 writer.AddOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
                 writer.Align(16);
             }
 
             public void FinishWrite(BINAWriter writer)
             {
+                writer.Align(GetAlignment(template.tags[Parameters.ElementAt(0).Key].fields[0], writer.FileVersion));
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
-                switch (Name)
+                if (Parameters.Count > 0)
                 {
-                    case "RangeSpawning":
-                        writer.WriteArray((float[])Data);
+                    WriteStruct(writer, (Dictionary<string, object>)Parameters.ElementAt(0).Value, Parameters.ElementAt(0).Key);
+                    foreach (var i in paramArrays)
+                    {
+                        writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + i.Key.Item1 + i.Key.Item2.ToString());
+                        foreach (var x in i.Value)
+                            WriteField(writer, new() { type = i.Key.Item1.Substring(i.Key.Item1.IndexOf('.') + 1) }, x);
+                    }
+                }
+                long dataSize = writer.Position - writer.GetOffsetValue(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
+                writer.WriteAt(dataSize, writer.GetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "datasize"));
+            }
+
+            void WriteField(BINAWriter writer, Template.StructTemplateField field, object value)
+            {
+                writer.Align(GetAlignment(field, writer.FileVersion));
+                bool isStruct = false;
+                switch (field.type)
+                {
+                    case "bool":
+                        writer.Write((Convert.ToBoolean(value)) ? (byte)1 : (byte)0);
+                        break;
+
+                    case "float32":
+                        writer.Write(Convert.ToSingle(value));
+                        break;
+
+                    case "uint8" or "int8":
+                        writer.Write(Convert.ToByte(value));
+                        break;
+
+                    case "uint16":
+                        writer.Write(Convert.ToUInt16(value));
+                        break;
+
+                    case "int16":
+                        writer.Write(Convert.ToInt16(value));
+                        break;
+
+                    case "uint32":
+                        writer.Write(Convert.ToUInt32(value));
+                        break;
+
+                    case "int32":
+                        writer.Write(Convert.ToInt32(value));
+                        break;
+
+                    case "uint64":
+                        writer.Write(Convert.ToUInt64(value));
+                        break;
+
+                    case "int64":
+                        writer.Write(Convert.ToInt64(value));
+                        break;
+
+                    case "string":
+                        writer.WriteStringTableEntry((string)value);
+                        writer.WriteNulls(8);
+                        break;
+
+                    case "array":
+                        if (field.array_size == null)
+                        {
+                            Random rnd = new();
+                            long r = rnd.NextInt64();
+                            writer.AddOffset(Owner.ObjectName + Owner.ID.ToString() + Name + field.name + "." + field.subtype + r.ToString());
+                            writer.Write((long)((object[])value).Length);
+                            writer.Write((long)((object[])value).Length);
+                            writer.WriteNulls(8);
+                            paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
+                        }
+                        else
+                        {
+                            for (int i = 0; i < (int)field.array_size; i++)
+                                WriteField(writer, new() { name = field.name, type = field.subtype }, ((object[])value)[i]);
+                        }
+                        break;
+
+                    case "object_reference":
+                        if (writer.FileVersion == 2)
+                            writer.Write((Guid)value);
+                        else if (writer.FileVersion == 3)
+                            writer.WriteArray(new byte[4] { ((Guid)value).ToByteArray()[0], ((Guid)value).ToByteArray()[1], ((Guid)value).ToByteArray()[2], ((Guid)value).ToByteArray()[3] });
+                        break;
+
+                    case "vector2":
+                        writer.Write((Vector2)value);
+                        break;
+
+                    case "vector3":
+                        writer.Write((Vector3)value);
+                        break;
+
+                    case "vector4":
+                        writer.Write((Vector4)value);
                         break;
 
                     default:
-                        writer.WriteArray((byte[])Data);
+                        if (field.type.Contains("::"))
+                        {
+                            switch (template.enums[field.type].type)
+                            {
+                                case "uint8" or "int8":
+                                    writer.Write((byte)((EnumValue)value).Selected);
+                                    break;
+
+                                case "uint":
+                                    writer.Write((ushort)((EnumValue)value).Selected);
+                                    break;
+
+                                case "int16":
+                                    writer.Write((short)((EnumValue)value).Selected);
+                                    break;
+
+                                case "uint32":
+                                    writer.Write((uint)((EnumValue)value).Selected);
+                                    break;
+
+                                case "int32":
+                                    writer.Write((int)((EnumValue)value).Selected);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            isStruct = true;
+                            WriteStruct(writer, (Dictionary<string, object>)value, field.type);
+                        }
                         break;
+                }
+                if (field.alignment != null && !isStruct)
+                    writer.Align((int)field.alignment);
+                else if (isStruct)
+                    writer.Align(GetAlignment(field, writer.FileVersion));
+            }
+
+            void WriteStruct(BINAWriter writer, Dictionary<string, object> str, string strName)
+            {
+                if(template.tags == null || (template.tags != null && !template.tags.ContainsKey(strName)))
+                {
+                    if (template.structs[strName].parent != null)
+                        WriteStruct(writer, (Dictionary<string, object>)str[template.structs[strName].parent], template.structs[strName].parent);
+                    int start = str.Keys.ToList().IndexOf(template.structs[strName].fields[0].name);
+                    for (int i = start; i < str.Count; i++)
+                        WriteField(writer, template.structs[strName].fields[i - start], str.ElementAt(i).Value);
+                }
+                else if(template.tags != null)
+                {
+                    if (template.tags[strName].parent != null)
+                        WriteStruct(writer, (Dictionary<string, object>)str[template.tags[strName].parent], template.tags[strName].parent);
+                    int start = str.Keys.ToList().IndexOf(template.tags[strName].fields[0].name);
+                    for (int i = start; i < str.Count; i++)
+                        WriteField(writer, template.tags[strName].fields[i - start], str.ElementAt(i).Value);  
                 }
             }
         }
@@ -706,6 +835,22 @@ public class ObjectWorld : IFile
         {
             public int Selected;
             public Dictionary<int, string> Values;
+        }
+
+        public static EnumValue GetEnumValueFromSelectedString(string selected, Template.EnumTemplate templ)
+        {
+            EnumValue enumValue = new();
+            enumValue.Values = new();
+            int x = 0;
+            foreach(var i in templ.values)
+            {
+                enumValue.Values.Add(i.Value.value, i.Key);
+                if(enumValue.Selected == null)
+                    if (i.Key == selected)
+                        enumValue.Selected = x;
+                x++;
+            }
+            return enumValue;
         }
     }
 
@@ -740,6 +885,7 @@ public class ObjectWorld : IFile
             public Dictionary<string, EnumTemplate> enums = new Dictionary<string, EnumTemplate>();
             public Dictionary<string, StructTemplate> structs = new Dictionary<string, StructTemplate>();
             public Dictionary<string, ObjectTemplate> objects = new Dictionary<string, ObjectTemplate>();
+            public Dictionary<string, StructTemplate>? tags = new Dictionary<string, StructTemplate>();
         }
 
         [Serializable]
@@ -813,20 +959,7 @@ public class ObjectWorld : IFile
         libHSON.Object obj = new(i.ID, i.ObjectName, i.TypeName, position: i.Position, rotation: Helpers.ToQuaternion(i.Rotation), parent: parentObj);
         ParameterCollection tags = new();
         foreach (var x in i.Tags)
-        {
-            switch (x.Name)
-            {
-                case "RangeSpawning":
-                    ParameterCollection paramColl = new(2)
-                        {
-                            { "rangeIn", new(((float[])x.Data)[0]) },
-                            { "rangeOut", new(((float[])x.Data)[1]) }
-                        };
-                    tags.Add(x.Name, new(paramColl));
-                    break;
-            }
-
-        }
+            tags.Add(x.Name, CreateHsonParameter(x.Parameters));
         obj.LocalParameters.Add("tags", new(tags));
 
         CreateHsonParameters(i.Parameters, ref obj);
@@ -920,21 +1053,20 @@ public class ObjectWorld : IFile
     #endregion
 
     #region FromHson
-    public static ObjectWorld ToGedit(Project project, string templateFilePath) 
+    public static ObjectWorld ToGedit(Project project) 
     {
-        Template.TemplateJSON template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(templateFilePath));
+        template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
         ObjectWorld gedit = new();
-        gedit.TemplateFilePath = templateFilePath;
-        gedit.template = template;
         foreach (var i in project.Objects)
-            gedit.Objects.Add(CreateGeditObject(i, template));
+            gedit.Objects.Add(CreateGeditObject(i));
         return gedit;
     }
 
-    static Object CreateGeditObject(libHSON.Object i, Template.TemplateJSON template)
+    static Object CreateGeditObject(libHSON.Object i)
     {
         Object obj = new();
-        obj.template = template;
+        obj.ID = i.Id;
+        obj.ParentID = i.ParentId;
         obj.ObjectName = i.Name;
         obj.TypeName = i.Type;
         obj.Position = i.LocalPosition;
@@ -944,12 +1076,8 @@ public class ObjectWorld : IFile
         foreach (var x in i.LocalParameters["tags"].ValueObject)
         {
             Object.Tag tag = new() { Name = x.Key };
-            switch (x.Key)
-            {
-                case "RangeSpawning":
-                    tag.Data = new float[2] { (float)x.Value.ValueObject["rangeIn"].ValueFloatingPoint, (float)x.Value.ValueObject["rangeOut"].ValueFloatingPoint };
-                    break;
-            }
+            tag.Parameters = CreateGeditParameter(new(x.Key, x.Value), template);
+            tag.Owner = obj;
             obj.Tags.Add(tag);
         }
         obj.Parameters = CreateGeditParameter(new(i.LocalParameters.ElementAt(1).Key, i.LocalParameters.ElementAt(1).Value), template);
