@@ -1,6 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using AshDumpLib.CastleSiege;
-using AshDumpLib.HedgehogEngine.Archives;
+//using AshDumpLib.CastleSiege;
+//using AshDumpLib.HedgehogEngine.Archives;
 using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.HedgehogEngine.Needle;
 using AshDumpLib.HedgehogEngine.BINA.RFL;
@@ -39,7 +39,7 @@ string filepath = Console.ReadLine();
 //};
 //anim.Materials.Add(mat);
 //anim.SaveToFile(filepath);
-ObjectWorld gedit = new(filepath);
+ObjectWorld gedit = new(filepath, "E:\\Steam\\steamapps\\common\\SonicFrontiers\\frontiers.template.hson.json");
 var i = gedit.ToHson();
 i.Save(filepath.Replace(".gedit", ".hson"));
 var x = ObjectWorld.ToGedit(i);

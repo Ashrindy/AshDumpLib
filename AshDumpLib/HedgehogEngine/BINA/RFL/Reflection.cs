@@ -4,59 +4,151 @@ using System.Numerics;
 using Amicitia.IO.Binary;
 
 using static AshDumpLib.HedgehogEngine.MathA;
-using System.Security.AccessControl;
+using static AshDumpLib.HedgehogEngine.BINA.RFL.ReflectionData.Template;
 
 namespace AshDumpLib.HedgehogEngine.BINA.RFL;
 
-public class Reflection : IFile
+public class ReflectionData
 {
-    public const string FileExtension = ".rfl";
-
     public Dictionary<string, object> Parameters = new();
 
+    public string TemplateFilePath = "";
+    public TemplateJSON TemplateData;
+    public string StructName = "";
 
-    public string TemplateFilePath = "frontiers.rfl.json";
-    public string RFLName = "PhotoModeParameters";
-    Template.TemplateJSON template;
-    Template.StructTemplate structTemplate;
+    Dictionary<Tuple<string, long>, object[]> paramArrays = new();
+    long Id = 0;
 
-    public int FileVersion = 1;
+    public ReflectionData()
+    {
+        if(TemplateFilePath != "")
+            TemplateData = Template.GetTemplateFromFilePath(TemplateFilePath);
+        Id = Random.Shared.NextInt64();
+    }
 
-    public Reflection() { }
+    public ReflectionData(string templateFilePath)
+    {
+        TemplateFilePath = templateFilePath;
+        if (TemplateFilePath != "")
+            TemplateData = GetTemplateFromFilePath(TemplateFilePath);
+        Id = Random.Shared.NextInt64();
+    }
 
-    public Reflection(string filename) => Open(filename);
-    public Reflection(string filename, string templateFilePath = "frontiers.rfl.json", string rflName = "PhotoModeParameters") { TemplateFilePath = templateFilePath; RFLName = rflName; Open(filename); }
-
-    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
-    public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }
+    public ReflectionData(TemplateJSON templateData)
+    {
+        TemplateData = templateData;
+        Id = Random.Shared.NextInt64();
+    }
 
     public void Read(BINAReader reader)
     {
-        template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
-        reader.FileVersion = FileVersion;
-
-        reader.ReadHeader();
-
-        structTemplate = template.structs[RFLName];
-        Parameters.Add(RFLName, ReadStruct(reader, structTemplate, RFLName));
-
-        reader.Dispose();
+        if(TemplateData.tags != null && TemplateData.tags.ContainsKey(StructName))
+            Parameters = ReadStruct(reader, TemplateData.tags[StructName]);
+        else if(TemplateData.objects != null && TemplateData.objects.ContainsKey(StructName))
+            Parameters.Add(TemplateData.objects[StructName].structs, ReadStruct(reader, TemplateData.structs[TemplateData.objects[StructName].structs]));
+        else
+            Parameters.Add(StructName, ReadStruct(reader, TemplateData.structs[StructName]));
     }
 
     public void Write(BINAWriter writer)
     {
-        template = JsonConvert.DeserializeObject<Template.TemplateJSON>(File.ReadAllText(TemplateFilePath));
-        writer.FileVersion = FileVersion;
+        if (Parameters.Count > 0)
+        {
+            WriteStruct(writer, (Dictionary<string, object>)Parameters.ElementAt(0).Value, Parameters.ElementAt(0).Key);
+            foreach (var i in paramArrays)
+            {
+                writer.SetOffset(Id.ToString() + i.Key.Item1 + i.Key.Item2.ToString());
+                foreach (var x in i.Value)
+                    WriteField(writer, new() { type = i.Key.Item1.Substring(i.Key.Item1.IndexOf('.') + 1) }, x);
+            }
+        }
+    } 
 
-        writer.WriteHeader();
+    #region TemplateReader
+    public static class Template
+    {
+        public static int GetVersionFromTemplate(string version)
+        {
+            int ver = 3;
+            switch (version)
+            {
+                case "gedit_v2":
+                    ver = 2;
+                    break;
 
+                case "gedit_v3":
+                    ver = 3;
+                    break;
 
+                default:
+                    throw new NotImplementedException();
+                    break;
+            }
+            return ver;
+        }
 
-        writer.FinishWrite();
-        writer.Dispose();
+        public static TemplateJSON GetTemplateFromFilePath(string filepath)
+        {
+            return JsonConvert.DeserializeObject<TemplateJSON>(File.ReadAllText(filepath));
+        }
+
+        [Serializable]
+        public class TemplateJSON
+        {
+            public int version;
+            public string format;
+            public Dictionary<string, EnumTemplate> enums = new Dictionary<string, EnumTemplate>();
+            public Dictionary<string, StructTemplate> structs = new Dictionary<string, StructTemplate>();
+            public Dictionary<string, ObjectTemplate> objects = new Dictionary<string, ObjectTemplate>();
+            public Dictionary<string, StructTemplate>? tags = new Dictionary<string, StructTemplate>();
+        }
+
+        [Serializable]
+        public class EnumTemplate
+        {
+            public string type;
+            public Dictionary<string, EnumTemplateValue> values = new Dictionary<string, EnumTemplateValue>();
+        }
+
+        [Serializable]
+        public class EnumTemplateValue
+        {
+            public int value;
+            public Dictionary<string, string> descriptions = new Dictionary<string, string>();
+        }
+
+        [Serializable]
+        public class StructTemplate
+        {
+            public string? parent;
+            public StructTemplateField[] fields;
+        }
+
+        [Serializable]
+        public class StructTemplateField
+        {
+            public string name;
+            public string type;
+            public string? subtype;
+            public int? array_size;
+            public int? alignment;
+            public object? min_range;
+            public object? max_range;
+            public object? step;
+            public Dictionary<string, string> descriptions = new Dictionary<string, string>();
+        }
+
+        [Serializable]
+        public class ObjectTemplate
+        {
+            [JsonProperty("struct")]
+            public string? structs;
+            public string? category;
+        }
     }
+    #endregion
 
-    int GetAlignment(Template.StructTemplateField field, int fileVersion)
+    int GetAlignment(StructTemplateField field, int fileVersion)
     {
         string subtype = "";
         string type = field.type;
@@ -107,9 +199,9 @@ public class Reflection : IFile
                 default:
                     if (field.type.Contains("::"))
                     {
-                        if (template.enums.ContainsKey(field.type))
+                        if (TemplateData.enums.ContainsKey(field.type))
                         {
-                            switch (template.enums[field.type].type)
+                            switch (TemplateData.enums[field.type].type)
                             {
                                 case "uint8" or "int8":
                                     align = 1;
@@ -129,10 +221,10 @@ public class Reflection : IFile
                             }
                         }
                     }
-                    else if (template.structs.ContainsKey(field.type))
+                    else if (TemplateData.structs.ContainsKey(field.type))
                     {
                         int largestAlignStr = 0;
-                        foreach (var i in template.structs[field.type].fields)
+                        foreach (var i in TemplateData.structs[field.type].fields)
                         {
                             align = GetAlignment(i, fileVersion);
                             if (align > largestAlignStr)
@@ -149,7 +241,7 @@ public class Reflection : IFile
     }
 
     #region ReadingParameters
-    object ReadField(BINAReader reader, string type, Template.StructTemplateField field, Dictionary<string, object> parent)
+    object ReadField(BINAReader reader, string type, StructTemplateField field, Dictionary<string, object> parent)
     {
         object value = null;
         reader.Align(GetAlignment(field, reader.FileVersion));
@@ -282,94 +374,51 @@ public class Reflection : IFile
             default:
                 if (type.Contains("::"))
                 {
-                    if (template.enums.ContainsKey(type))
+                    if (TemplateData.enums.ContainsKey(type))
                     {
                         EnumValue eValue = new();
-                        switch (template.enums[type].type)
+                        eValue.Values = new();
+                        switch (TemplateData.enums[type].type)
                         {
                             case "uint8" or "int8":
-                                eValue.Values = new();
                                 eValue.Selected = reader.Read<byte>();
-                                foreach (var x in template.enums[type].values)
-                                {
-                                    if (!eValue.Values.ContainsKey(x.Value.value))
-                                        eValue.Values.Add(x.Value.value, x.Key);
-                                }
-                                value = eValue;
+                                
                                 break;
 
                             case "uint16":
-                                eValue.Values = new();
                                 eValue.Selected = reader.Read<ushort>();
-                                foreach (var x in template.enums[type].values)
-                                {
-                                    if (!eValue.Values.ContainsKey(x.Value.value))
-                                        eValue.Values.Add(x.Value.value, x.Key);
-                                }
-                                value = eValue;
                                 break;
 
                             case "int16":
-                                eValue.Values = new();
                                 eValue.Selected = reader.Read<short>();
-                                foreach (var x in template.enums[type].values)
-                                {
-                                    if (!eValue.Values.ContainsKey(x.Value.value))
-                                        eValue.Values.Add(x.Value.value, x.Key);
-                                }
-                                value = eValue;
                                 break;
 
                             case "uint32":
-                                eValue.Values = new();
                                 eValue.Selected = (int)reader.Read<uint>();
-                                foreach (var x in template.enums[type].values)
-                                {
-                                    if (!eValue.Values.ContainsKey(x.Value.value))
-                                        eValue.Values.Add(x.Value.value, x.Key);
-                                }
-                                value = eValue;
                                 break;
 
                             case "int32":
-                                eValue.Values = new();
                                 eValue.Selected = reader.Read<int>();
-                                foreach (var x in template.enums[type].values)
-                                {
-                                    if (!eValue.Values.ContainsKey(x.Value.value))
-                                        eValue.Values.Add(x.Value.value, x.Key);
-                                }
-                                value = eValue;
                                 break;
 
                             case "uint64":
-                                eValue.Values = new();
                                 eValue.Selected = (int)reader.Read<ulong>();
-                                foreach (var x in template.enums[type].values)
-                                {
-                                    if (!eValue.Values.ContainsKey(x.Value.value))
-                                        eValue.Values.Add(x.Value.value, x.Key);
-                                }
-                                value = eValue;
                                 break;
 
                             case "int64":
-                                eValue.Values = new();
                                 eValue.Selected = (int)reader.Read<long>();
-                                foreach (var x in template.enums[type].values)
-                                {
-                                    if (!eValue.Values.ContainsKey(x.Value.value))
-                                        eValue.Values.Add(x.Value.value, x.Key);
-                                }
-                                value = eValue;
                                 break;
                         }
+                        foreach (var x in TemplateData.enums[type].values)
+                            if (!eValue.Values.ContainsKey(x.Value.value))
+                                eValue.Values.Add(x.Value.value, x.Key);
+                        value = eValue;
                     }
                 }
-                else if (template.structs.ContainsKey(type))
+                else if (TemplateData.structs.ContainsKey(type))
                 {
                     isStruct = true;
-                    value = ReadStruct(reader, template.structs[type], type);
+                    value = ReadStruct(reader, TemplateData.structs[type]);
                 }
                 break;
         }
@@ -377,61 +426,59 @@ public class Reflection : IFile
         return value;
     }
 
-    Dictionary<string, object> ReadStruct(BINAReader reader, Template.StructTemplate str, string structName)
+    Dictionary<string, object> ReadStruct(BINAReader reader, StructTemplate str)
     {
         Dictionary<string, object> parameters = new();
         if (str.parent != null)
-            parameters.Add(str.parent, ReadStruct(reader, template.structs[str.parent], str.parent));
+            parameters.Add(str.parent, ReadStruct(reader, TemplateData.structs[str.parent]));
         if (str.fields != null)
-        {
             foreach (var i in str.fields)
                 parameters.Add(i.name, ReadField(reader, i.type, i, parameters));
-        }
         return parameters;
     }
     #endregion
 
     #region WritingParameters
-    void WriteField(BINAWriter writer, Template.StructTemplateField field, object value)
+    void WriteField(BINAWriter writer, StructTemplateField field, object value)
     {
         writer.Align(GetAlignment(field, writer.FileVersion));
         bool isStruct = false;
         switch (field.type)
         {
             case "bool":
-                writer.Write((bool)value ? (byte)1 : (byte)0);
+                writer.Write(Convert.ToBoolean(value) ? (byte)1 : (byte)0);
                 break;
 
             case "float32":
-                writer.Write((float)value);
+                writer.Write(Convert.ToSingle(value));
                 break;
 
             case "uint8" or "int8":
-                writer.Write((byte)value);
+                writer.Write(Convert.ToByte(value));
                 break;
 
             case "uint16":
-                writer.Write((ushort)value);
+                writer.Write(Convert.ToUInt16(value));
                 break;
 
             case "int16":
-                writer.Write((short)value);
+                writer.Write(Convert.ToInt16(value));
                 break;
 
             case "uint32":
-                writer.Write((uint)value);
+                writer.Write(Convert.ToUInt32(value));
                 break;
 
             case "int32":
-                writer.Write((int)value);
+                writer.Write(Convert.ToInt32(value));
                 break;
 
             case "uint64":
-                writer.Write((ulong)value);
+                writer.Write(Convert.ToUInt64(value));
                 break;
 
             case "int64":
-                writer.Write((long)value);
+                writer.Write(Convert.ToInt64(value));
                 break;
 
             case "string":
@@ -442,22 +489,26 @@ public class Reflection : IFile
             case "array":
                 if (field.array_size == null)
                 {
-                    //Random rnd = new();
-                    //long r = rnd.NextInt64();
-                    //writer.AddOffset(ObjectName + ID.ToString() + field.name + "." + field.subtype + r.ToString());
-                    //writer.Write((long)((object[])value).Length);
-                    //writer.Write((long)((object[])value).Length);
-                    //writer.WriteNulls(8);
-                    //paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
-                    throw new NotImplementedException("Not pre-set array size writing isn't implemented yet!");
+                    Random rnd = new();
+                    long r = rnd.NextInt64();
+                    writer.AddOffset(Id.ToString() + field.name + "." + field.subtype + r.ToString());
+                    writer.Write((long)((object[])value).Length);
+                    writer.Write((long)((object[])value).Length);
+                    writer.WriteNulls(8);
+                    paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
                 }
                 else
+                {
                     for (int i = 0; i < (int)field.array_size; i++)
                         WriteField(writer, new() { name = field.name, type = field.subtype }, ((object[])value)[i]);
+                }
                 break;
 
             case "object_reference":
-                writer.Write((Guid)value);
+                if (writer.FileVersion == 2)
+                    writer.Write((Guid)value);
+                else if (writer.FileVersion == 3)
+                    writer.WriteArray(new byte[4] { ((Guid)value).ToByteArray()[0], ((Guid)value).ToByteArray()[1], ((Guid)value).ToByteArray()[2], ((Guid)value).ToByteArray()[3] });
                 break;
 
             case "vector2":
@@ -475,36 +526,33 @@ public class Reflection : IFile
             default:
                 if (field.type.Contains("::"))
                 {
-                    if (template.enums.ContainsKey(field.type))
+                    switch (TemplateData.enums[field.type].type)
                     {
-                        switch (template.enums[field.type].type)
-                        {
-                            case "uint8" or "int8":
-                                writer.Write((byte)((EnumValue)value).Selected);
-                                break;
+                        case "uint8" or "int8":
+                            writer.Write((byte)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            break;
 
-                            case "uint":
-                                writer.Write((ushort)((EnumValue)value).Selected);
-                                break;
+                        case "uint":
+                            writer.Write((ushort)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            break;
 
-                            case "int16":
-                                writer.Write((short)((EnumValue)value).Selected);
-                                break;
+                        case "int16":
+                            writer.Write((short)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            break;
 
-                            case "uint32":
-                                writer.Write((uint)((EnumValue)value).Selected);
-                                break;
+                        case "uint32":
+                            writer.Write((uint)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            break;
 
-                            case "int32":
-                                writer.Write(((EnumValue)value).Selected);
-                                break;
-                        }
+                        case "int32":
+                            writer.Write(EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            break;
                     }
-                    else if (template.structs.ContainsKey(field.type))
-                    {
-                        isStruct = true;
-                        WriteStruct(writer, (Dictionary<string, object>)value, field.type);
-                    }
+                }
+                else
+                {
+                    isStruct = true;
+                    WriteStruct(writer, (Dictionary<string, object>)value, field.type);
                 }
                 break;
         }
@@ -516,11 +564,22 @@ public class Reflection : IFile
 
     void WriteStruct(BINAWriter writer, Dictionary<string, object> str, string strName)
     {
-        if (template.structs[strName].parent != null)
-            WriteStruct(writer, (Dictionary<string, object>)str[template.structs[strName].parent], template.structs[strName].parent);
-        int start = str.Keys.ToList().IndexOf(template.structs[strName].fields[0].name);
-        for (int i = start; i < str.Count; i++)
-            WriteField(writer, template.structs[strName].fields[i - start], str.ElementAt(i).Value);
+        if (TemplateData.tags == null || TemplateData.tags != null && !TemplateData.tags.ContainsKey(strName))
+        {
+            if (TemplateData.structs[strName].parent != null)
+                WriteStruct(writer, (Dictionary<string, object>)str[TemplateData.structs[strName].parent], TemplateData.structs[strName].parent);
+            int start = str.Keys.ToList().IndexOf(TemplateData.structs[strName].fields[0].name);
+            for (int i = start; i < str.Count; i++)
+                WriteField(writer, TemplateData.structs[strName].fields[i - start], str.ElementAt(i).Value);
+        }
+        else if (TemplateData.tags != null)
+        {
+            if (TemplateData.tags[strName].parent != null)
+                WriteStruct(writer, (Dictionary<string, object>)str[TemplateData.tags[strName].parent], TemplateData.tags[strName].parent);
+            int start = str.Keys.ToList().IndexOf(TemplateData.tags[strName].fields[0].name);
+            for (int i = start; i < str.Count; i++)
+                WriteField(writer, TemplateData.tags[strName].fields[i - start], str.ElementAt(i).Value);
+        }
     }
     #endregion
 
@@ -528,83 +587,71 @@ public class Reflection : IFile
     {
         public int Selected;
         public Dictionary<int, string> Values;
-    }
 
-    #region TemplateReader
-    public static class Template
-    {
-        public static int GetVersionFromTemplate(string version)
+        public static EnumValue GetEnumValueFromSelectedString(string selected, Template.EnumTemplate templ)
         {
-            int ver = 3;
-            switch (version)
+            EnumValue enumValue = new();
+            enumValue.Values = new();
+            int x = 0;
+            foreach (var i in templ.values)
             {
-                case "gedit_v2":
-                    ver = 2;
-                    break;
-
-                case "gedit_v3":
-                    ver = 3;
-                    break;
-
-                default:
-                    throw new NotImplementedException();
-                    break;
+                enumValue.Values.Add(i.Value.value, i.Key);
+                if (enumValue.Selected == null)
+                    if (i.Key == selected)
+                        enumValue.Selected = x;
+                x++;
             }
-            return ver;
-        }
-
-        [Serializable]
-        public class TemplateJSON
-        {
-            public int version;
-            public string format;
-            public Dictionary<string, EnumTemplate> enums = new Dictionary<string, EnumTemplate>();
-            public Dictionary<string, StructTemplate> structs = new Dictionary<string, StructTemplate>();
-            public Dictionary<string, ObjectTemplate> objects = new Dictionary<string, ObjectTemplate>();
-        }
-
-        [Serializable]
-        public class EnumTemplate
-        {
-            public string type;
-            public Dictionary<string, EnumTemplateValue> values = new Dictionary<string, EnumTemplateValue>();
-        }
-
-        [Serializable]
-        public class EnumTemplateValue
-        {
-            public int value;
-            public Dictionary<string, string> descriptions = new Dictionary<string, string>();
-        }
-
-        [Serializable]
-        public class StructTemplate
-        {
-            public string? parent;
-            public StructTemplateField[] fields;
-        }
-
-        [Serializable]
-        public class StructTemplateField
-        {
-            public string name;
-            public string type;
-            public string? subtype;
-            public int? array_size;
-            public int? alignment;
-            public object? min_range;
-            public object? max_range;
-            public object? step;
-            public Dictionary<string, string> descriptions = new Dictionary<string, string>();
-        }
-
-        [Serializable]
-        public class ObjectTemplate
-        {
-            [JsonProperty("struct")]
-            public string? structs;
-            public string? category;
+            return enumValue;
         }
     }
-    #endregion
+
+    public struct BitFlag
+    {
+        public Dictionary<string, bool> Flags;
+    }
+}
+
+public class Reflection : IFile
+{
+    public const string FileExtension = ".rfl";
+
+    public static string TemplateFilePath = "frontiers.rfl.json";
+    public string RFLName = "PhotoModeParameters";
+
+    public ReflectionData Parameters;
+
+    public int FileVersion = 1;
+
+    public Reflection() { }
+
+    public Reflection(string filename) => Open(filename);
+    public Reflection(string filename, string templateFilePath = "frontiers.rfl.json", string rflName = "PhotoModeParameters") { TemplateFilePath = templateFilePath; Parameters = new(TemplateFilePath); RFLName = rflName; Open(filename); }
+
+    public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
+    public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }
+
+    public void Read(BINAReader reader)
+    {
+        reader.FileVersion = FileVersion;
+
+        reader.ReadHeader();
+
+        Parameters.StructName = RFLName;
+        Parameters.Read(reader);
+
+        reader.Dispose();
+    }
+
+    public void Write(BINAWriter writer)
+    {
+        writer.FileVersion = FileVersion;
+
+        writer.WriteHeader();
+
+        Parameters.StructName = RFLName;
+        Parameters.Write(writer);
+
+        writer.FinishWrite();
+        writer.Dispose();
+    }
 }
