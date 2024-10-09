@@ -309,7 +309,7 @@ public class ObjectWorld : IFile
 
             public void FinishWrite(BINAWriter writer)
             {
-                writer.Align(GetAlignment(Parameters.TemplateData.tags[Parameters.Parameters.ElementAt(0).Key].fields[0], writer.FileVersion));
+                writer.Align(GetAlignment(Parameters.TemplateData.structs[Parameters.Parameters.ElementAt(0).Key].fields[0], writer.FileVersion));
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
                 Parameters.StructName = Name;
                 Parameters.Write(writer);

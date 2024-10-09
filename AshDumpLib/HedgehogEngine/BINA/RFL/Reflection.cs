@@ -5,6 +5,8 @@ using Amicitia.IO.Binary;
 
 using static AshDumpLib.HedgehogEngine.MathA;
 using static AshDumpLib.HedgehogEngine.BINA.RFL.ReflectionData.Template;
+using System.Collections;
+using System.Runtime.InteropServices;
 
 namespace AshDumpLib.HedgehogEngine.BINA.RFL;
 
@@ -42,8 +44,8 @@ public class ReflectionData
 
     public void Read(BINAReader reader)
     {
-        if(TemplateData.tags != null && TemplateData.tags.ContainsKey(StructName))
-            Parameters = ReadStruct(reader, TemplateData.tags[StructName]);
+        if (TemplateData.tags != null && TemplateData.tags.ContainsKey(StructName))
+            Parameters.Add(TemplateData.tags[StructName].structs, ReadStruct(reader, TemplateData.structs[TemplateData.tags[StructName].structs]));
         else if(TemplateData.objects != null && TemplateData.objects.ContainsKey(StructName))
             Parameters.Add(TemplateData.objects[StructName].structs, ReadStruct(reader, TemplateData.structs[TemplateData.objects[StructName].structs]));
         else
@@ -100,7 +102,7 @@ public class ReflectionData
             public Dictionary<string, EnumTemplate> enums = new Dictionary<string, EnumTemplate>();
             public Dictionary<string, StructTemplate> structs = new Dictionary<string, StructTemplate>();
             public Dictionary<string, ObjectTemplate> objects = new Dictionary<string, ObjectTemplate>();
-            public Dictionary<string, StructTemplate>? tags = new Dictionary<string, StructTemplate>();
+            public Dictionary<string, TagTemplate>? tags = new Dictionary<string, TagTemplate>();
         }
 
         [Serializable]
@@ -130,6 +132,7 @@ public class ReflectionData
             public string name;
             public string type;
             public string? subtype;
+            public Dictionary<string, EnumTemplateValue>? flags;
             public int? array_size;
             public int? alignment;
             public object? min_range;
@@ -144,6 +147,13 @@ public class ReflectionData
             [JsonProperty("struct")]
             public string? structs;
             public string? category;
+        }
+
+        [Serializable]
+        public class TagTemplate
+        {
+            [JsonProperty("struct")]
+            public string? structs;
         }
     }
     #endregion
@@ -241,6 +251,28 @@ public class ReflectionData
     }
 
     #region ReadingParameters
+
+    static List<bool> FlagsToBools<T>(T value) where T : unmanaged
+    {
+        List<bool> returnValue = new();
+        Span<byte> bytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref value, 1));
+        var bits = new BitArray(bytes.ToArray());
+        for (int i = 0; i < bits.Count; i++)
+        {
+            returnValue.Add(bits[i]);
+        }
+        return returnValue;
+    }
+
+    static BitFlag BoolsToBitFlag(List<bool> bools, Dictionary<string, EnumTemplateValue> flags)
+    {
+        BitFlag returnValue = new();
+        returnValue.Flags = new();
+        foreach(var i in flags) 
+            returnValue.Flags.Add(i.Key, bools[i.Value.value]);
+        return returnValue;
+    }
+
     object ReadField(BINAReader reader, string type, StructTemplateField field, Dictionary<string, object> parent)
     {
         object value = null;
@@ -266,7 +298,7 @@ public class ReflectionData
                 value = reader.Read<double>();
                 break;
 
-            case "uint8" or "int8" or "flags":
+            case "uint8" or "int8":
                 value = reader.Read<byte>();
                 break;
 
@@ -369,6 +401,72 @@ public class ReflectionData
 
             case "colorf":
                 value = reader.Read<ColorF>();
+                break;
+
+            case "flags":
+                if(field.flags == null)
+                {
+                    switch (field.subtype)
+                    {
+                        case "uint8" or "int8":
+                            value = reader.Read<byte>();
+                            break;
+
+                        case "uint16":
+                            value = reader.Read<ushort>();
+                            break;
+
+                        case "int16":
+                            value = reader.Read<short>();
+                            break;
+
+                        case "uint32":
+                            value = reader.Read<uint>();
+                            break;
+
+                        case "int32":
+                            value = reader.Read<int>();
+                            break;
+
+                        case "uint64":
+                            value = reader.Read<ulong>();
+                            break;
+
+                        case "int64":
+                            value = reader.Read<long>();
+                            break;
+                    }
+                }
+                switch (field.subtype)
+                {
+                    case "uint8" or "int8":
+                        value = BoolsToBitFlag(FlagsToBools(reader.Read<byte>()), field.flags);
+                        break;
+
+                    case "uint16":
+                        value = BoolsToBitFlag(FlagsToBools(reader.Read<ushort>()), field.flags);
+                        break;
+
+                    case "int16":
+                        value = BoolsToBitFlag(FlagsToBools(reader.Read<short>()), field.flags);
+                        break;
+
+                    case "uint32":
+                        value = BoolsToBitFlag(FlagsToBools(reader.Read<uint>()), field.flags);
+                        break;
+
+                    case "int32":
+                        value = BoolsToBitFlag(FlagsToBools(reader.Read<int>()), field.flags);
+                        break;
+
+                    case "uint64":
+                        value = BoolsToBitFlag(FlagsToBools(reader.Read<ulong>()), field.flags);
+                        break;
+
+                    case "int64":
+                        value = BoolsToBitFlag(FlagsToBools(reader.Read<long>()), field.flags);
+                        break;
+                }
                 break;
 
             default:
@@ -564,22 +662,11 @@ public class ReflectionData
 
     void WriteStruct(BINAWriter writer, Dictionary<string, object> str, string strName)
     {
-        if (TemplateData.tags == null || TemplateData.tags != null && !TemplateData.tags.ContainsKey(strName))
-        {
-            if (TemplateData.structs[strName].parent != null)
-                WriteStruct(writer, (Dictionary<string, object>)str[TemplateData.structs[strName].parent], TemplateData.structs[strName].parent);
-            int start = str.Keys.ToList().IndexOf(TemplateData.structs[strName].fields[0].name);
-            for (int i = start; i < str.Count; i++)
-                WriteField(writer, TemplateData.structs[strName].fields[i - start], str.ElementAt(i).Value);
-        }
-        else if (TemplateData.tags != null)
-        {
-            if (TemplateData.tags[strName].parent != null)
-                WriteStruct(writer, (Dictionary<string, object>)str[TemplateData.tags[strName].parent], TemplateData.tags[strName].parent);
-            int start = str.Keys.ToList().IndexOf(TemplateData.tags[strName].fields[0].name);
-            for (int i = start; i < str.Count; i++)
-                WriteField(writer, TemplateData.tags[strName].fields[i - start], str.ElementAt(i).Value);
-        }
+        if (TemplateData.structs[strName].parent != null)
+            WriteStruct(writer, (Dictionary<string, object>)str[TemplateData.structs[strName].parent], TemplateData.structs[strName].parent);
+        int start = str.Keys.ToList().IndexOf(TemplateData.structs[strName].fields[0].name);
+        for (int i = start; i < str.Count; i++)
+            WriteField(writer, TemplateData.structs[strName].fields[i - start], str.ElementAt(i).Value);
     }
     #endregion
 
