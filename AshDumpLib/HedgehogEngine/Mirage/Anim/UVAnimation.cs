@@ -131,7 +131,8 @@ public class UV
             UVFrameType type = (UVFrameType)reader.Read<byte>();
             frameInfo.Type = type;
             frameInfo.Flag = reader.Read<byte>();
-            reader.Skip(2);
+            frameInfo.Interpolation = reader.Read<byte>();
+            frameInfo.Flag2 = reader.Read<byte>();
             frameInfo.KeyFrames = new List<Keyframe>();
             var length = reader.Read<int>();
             var indexStart = reader.Read<int>();
@@ -157,7 +158,8 @@ public class UV
         {
             writer.Write((byte)frameInfo.Type);
             writer.Write((byte)frameInfo.Flag);
-            writer.Skip(2);
+            writer.Write((byte)frameInfo.Interpolation);
+            writer.Write((byte)frameInfo.Flag2);
             writer.Write(frameInfo.KeyFrames.Count);
             writer.Write(keyframes.Count);
 
@@ -173,6 +175,8 @@ public struct UVFrameInfo
 {
     public UVFrameType Type;
     public int Flag;
+    public int Flag2;
+    public int Interpolation;
     public List<Keyframe> KeyFrames;
 }
 

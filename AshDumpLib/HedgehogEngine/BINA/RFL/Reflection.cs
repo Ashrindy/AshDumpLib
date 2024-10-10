@@ -172,7 +172,7 @@ public class ReflectionData
             int align = 1;
             switch (type)
             {
-                case "bool" or "uint8" or "int8" or "flags":
+                case "bool" or "uint8" or "int8":
                     align = 1;
                     break;
 
@@ -186,6 +186,10 @@ public class ReflectionData
 
                 case "string" or "uint64" or "int64" or "float64":
                     align = 8;
+                    break;
+
+                case "flags":
+                    align = GetAlignment(new() { alignment = null, type = subtype }, fileVersion);
                     break;
 
                 case "object_reference":
@@ -233,14 +237,14 @@ public class ReflectionData
                     }
                     else if (TemplateData.structs.ContainsKey(field.type))
                     {
-                        int largestAlignStr = 0;
-                        foreach (var i in TemplateData.structs[field.type].fields)
-                        {
-                            align = GetAlignment(i, fileVersion);
-                            if (align > largestAlignStr)
-                                largestAlignStr = align;
-                        }
-                        return largestAlignStr;
+                            int largestAlignStr = 0;
+                            foreach (var i in TemplateData.structs[field.type].fields)
+                            {
+                                align = GetAlignment(i, fileVersion);
+                                if (align > largestAlignStr)
+                                    largestAlignStr = align;
+                            }
+                            return largestAlignStr;
                     }
                     break;
             }
@@ -537,11 +541,27 @@ public class ReflectionData
     #endregion
 
     #region WritingParameters
+    static T BitFlagToFlags<T>(BitFlag bitset) where T : struct, IConvertible
+    {
+        long returnValue = 0;
+        for (int i = 0; i < bitset.Flags.Count; i++)
+            if (bitset.Flags.ElementAt(i).Value)
+                returnValue |= (1L << i);
+        return (T)Convert.ChangeType(returnValue, typeof(T));
+    }
+
     void WriteField(BINAWriter writer, StructTemplateField field, object value)
     {
         writer.Align(GetAlignment(field, writer.FileVersion));
         bool isStruct = false;
-        switch (field.type)
+        string subtype = "";
+        string type = field.type;
+        if (field.array_size != null)
+        {
+            subtype = field.type;
+            type = "array";
+        }
+        switch (type)
         {
             case "bool":
                 writer.Write(Convert.ToBoolean(value) ? (byte)1 : (byte)0);
@@ -598,7 +618,7 @@ public class ReflectionData
                 else
                 {
                     for (int i = 0; i < (int)field.array_size; i++)
-                        WriteField(writer, new() { name = field.name, type = field.subtype }, ((object[])value)[i]);
+                        WriteField(writer, new() { name = field.name, type = subtype }, ((object[])value)[i]);
                 }
                 break;
 
@@ -619,6 +639,39 @@ public class ReflectionData
 
             case "vector4":
                 writer.Write((Vector4)value);
+                break;
+
+            case "flags":
+                switch (field.subtype)
+                {
+                    case "uint8" or "int8":
+                        writer.Write(BitFlagToFlags<byte>((BitFlag)value));
+                        break;
+
+                    case "uint16":
+                        writer.Write(BitFlagToFlags<ushort>((BitFlag)value));
+                        break;
+
+                    case "int16":
+                        writer.Write(BitFlagToFlags<short>((BitFlag)value));
+                        break;
+
+                    case "uint32":
+                        writer.Write(BitFlagToFlags<uint>((BitFlag)value));
+                        break;
+
+                    case "int32":
+                        writer.Write(BitFlagToFlags<int>((BitFlag)value));
+                        break;
+
+                    case "uint64":
+                        writer.Write(BitFlagToFlags<ulong>((BitFlag)value));
+                        break;
+
+                    case "int64":
+                        writer.Write(BitFlagToFlags<long>((BitFlag)value));
+                        break;
+                }
                 break;
 
             default:

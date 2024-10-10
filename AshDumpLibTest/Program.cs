@@ -45,6 +45,7 @@ string filepath = Console.ReadLine();
 //var x = ObjectWorld.ToGedit(i);
 //x.SaveToFile(filepath + "edited.gedit");
 Reflection rfl = new(filepath, templateFilePath: "frontiers.template.rfl.json", rflName: "MasterTrialParameters");
+rfl.SaveToFile(filepath + "_test.rfl");
 //NeedleShader needleShader = new(filepath);
 //Animator asm = new(filepath);
 //asm.SaveToFile(filepath + "1");
