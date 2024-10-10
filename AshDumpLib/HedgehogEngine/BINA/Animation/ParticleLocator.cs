@@ -150,16 +150,20 @@ public class ParticleLocator : IFile
                 UseRotation = flags >> 1 == 1;
                 IgnoreRelativeRotation = flags >> 2 == 1;
                 UseScale = flags >> 3 == 1;
+                //Might be just an align, because string offsets are 8 aligned
                 Flag2 = reader.Read<byte>();
                 Flag3 = reader.Read<byte>();
                 Unk0 = reader.Read<int>();
                 ParticleName = reader.ReadStringTableEntry();
                 BoneName = reader.ReadStringTableEntry();
+                //Might be just an align, because Vector3s are 16 aligned
                 Unk1 = reader.Read<int>();
                 Position = reader.Read<Vector3>();
+                //Might be just an align, because Quaternion are 16 aligned
                 Unk2 = reader.Read<long>();
                 Rotation = reader.Read<Quaternion>();
                 Scale = reader.Read<Vector3>();
+                //Might be just an align
                 Unk3 = reader.Read<int>();
             }
 
