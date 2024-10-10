@@ -61,7 +61,7 @@ public class ParticleLocator : IFile
     {
         public string StateName = "";
         public List<Particle> Particles = new();
-        public List<string> ParticleNames = new();
+        public List<string> SoundNames = new();
 
         public void Read(BINAReader reader)
         {
@@ -82,7 +82,7 @@ public class ParticleLocator : IFile
             reader.ReadAtOffset(particleNameOffset + 64, () =>
             {
                 for (int i = 0; i < particleNameCount; i++)
-                    ParticleNames.Add(reader.ReadStringTableEntry());
+                    SoundNames.Add(reader.ReadStringTableEntry());
             });
         }
 
@@ -91,12 +91,12 @@ public class ParticleLocator : IFile
             writer.WriteStringTableEntry(StateName);
             writer.Write((long)Particles.Count);
             if (Particles.Count > 0)
-                writer.AddOffset(StateName + "particles" + Particles.Count.ToString() + ParticleNames.Count.ToString());
+                writer.AddOffset(StateName + "particles" + Particles.Count.ToString() + SoundNames.Count.ToString());
             else
                 writer.WriteNulls(8);
-            writer.Write((long)ParticleNames.Count);
-            if (ParticleNames.Count > 0)
-                writer.AddOffset(StateName + "names" + ParticleNames.Count.ToString() + Particles.Count.ToString());
+            writer.Write((long)SoundNames.Count);
+            if (SoundNames.Count > 0)
+                writer.AddOffset(StateName + "names" + SoundNames.Count.ToString() + Particles.Count.ToString());
             else
                 writer.WriteNulls(8);
         }
@@ -106,7 +106,7 @@ public class ParticleLocator : IFile
             if(Particles.Count > 0)
             {
                 writer.Align(16);
-                writer.SetOffset(StateName + "particles" + Particles.Count.ToString() + ParticleNames.Count.ToString());
+                writer.SetOffset(StateName + "particles" + Particles.Count.ToString() + SoundNames.Count.ToString());
                 foreach (var i in Particles)
                     i.Write(writer);
             }
@@ -114,19 +114,22 @@ public class ParticleLocator : IFile
 
         public void FinishWrite2(BINAWriter writer)
         {
-            if(ParticleNames.Count > 0)
+            if(SoundNames.Count > 0)
             {
                 writer.Align(16);
-                writer.SetOffset(StateName + "names" + ParticleNames.Count.ToString() + Particles.Count.ToString());
-                foreach (var i in ParticleNames)
+                writer.SetOffset(StateName + "names" + SoundNames.Count.ToString() + Particles.Count.ToString());
+                foreach (var i in SoundNames)
                     writer.WriteStringTableEntry(i);
             }
         }
 
         public class Particle : IBINASerializable
         {
-            public byte Flag0 = 0;
-            public byte Flag1 = 0;
+            public bool AttachedToBone = true;
+            public bool UsePosition = true;
+            public bool UseRotation = true;
+            public bool IgnoreRelativeRotation = false;
+            public bool UseScale = true;
             public byte Flag2 = 0;
             public byte Flag3 = 0;
             public int Unk0 = 0;
@@ -141,8 +144,12 @@ public class ParticleLocator : IFile
 
             public void Read(BINAReader reader)
             {
-                Flag0 = reader.Read<byte>();
-                Flag1 = reader.Read<byte>();
+                AttachedToBone = reader.Read<byte>() == 1;
+                var flags = reader.Read<byte>();
+                UsePosition = flags >> 0 == 1;
+                UseRotation = flags >> 1 == 1;
+                IgnoreRelativeRotation = flags >> 2 == 1;
+                UseScale = flags >> 3 == 1;
                 Flag2 = reader.Read<byte>();
                 Flag3 = reader.Read<byte>();
                 Unk0 = reader.Read<int>();
@@ -158,8 +165,17 @@ public class ParticleLocator : IFile
 
             public void Write(BINAWriter writer)
             {
-                writer.Write(Flag0);
-                writer.Write(Flag1);
+                writer.Write((byte)(AttachedToBone ? 1 : 0));
+                byte flags = 0;
+                if (UsePosition)
+                    flags |= (1 << 0);
+                if (UseRotation)
+                    flags |= (1 << 1);
+                if (IgnoreRelativeRotation)
+                    flags |= (1 << 2);
+                if (UseScale)
+                    flags |= (1 << 3);
+                writer.Write(flags);
                 writer.Write(Flag2);
                 writer.Write(Flag3);
                 writer.Write(Unk0);
