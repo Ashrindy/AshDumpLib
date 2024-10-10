@@ -146,9 +146,9 @@ public class ParticleLocator : IFile
             {
                 AttachedToBone = reader.Read<byte>() == 1;
                 var flags = reader.Read<byte>();
-                UsePosition = flags >> 0 == 1;
-                UseRotation = flags >> 1 == 1;
-                IgnoreRelativeRotation = flags >> 2 == 1;
+                IgnoreRelativeRotation = flags >> 0 == 1;
+                UsePosition = flags >> 1 == 1;
+                UseRotation = flags >> 2 == 1;
                 UseScale = flags >> 3 == 1;
                 //Might be just an align, because string offsets are 8 aligned
                 Flag2 = reader.Read<byte>();
@@ -171,11 +171,11 @@ public class ParticleLocator : IFile
             {
                 writer.Write((byte)(AttachedToBone ? 1 : 0));
                 byte flags = 0;
-                if (UsePosition)
-                    flags |= (1 << 0);
-                if (UseRotation)
-                    flags |= (1 << 1);
                 if (IgnoreRelativeRotation)
+                    flags |= (1 << 0);
+                if (UsePosition)
+                    flags |= (1 << 1);
+                if (UseRotation)
                     flags |= (1 << 2);
                 if (UseScale)
                     flags |= (1 << 3);
