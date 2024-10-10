@@ -40,7 +40,7 @@ public class BINAWriter : ExtendedBinaryWriter
     public override void SetOffset(string id)
     {
         long offset = Position;
-        Seek(Offsets[id], SeekOrigin.Begin);
+        Seek(Offsets[id] + GenericOffset, SeekOrigin.Begin);
         Write(offset - GenericOffset);
         OffsetValues[id] = offset;
         Seek(offset, SeekOrigin.Begin);
@@ -187,7 +187,7 @@ public class BINAWriter : ExtendedBinaryWriter
 
     public override void AddOffset(string id, bool write = true)
     {
-        Offsets.Add(id, Position);
+        Offsets.Add(id, Position - GenericOffset);
         OffsetValues.Add(id, 0);
         OffsetsWrite.Add(id, write);
         this.Skip(8);

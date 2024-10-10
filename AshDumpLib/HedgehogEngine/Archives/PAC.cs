@@ -348,6 +348,12 @@ public class PAC : Archive
                                     AddFile(hgt);
                                     break;
 
+                                case "effdb":
+                                    ParticleLocator particleLocator = new();
+                                    particleLocator.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(particleLocator);
+                                    break;
+
                                 case "pcmodel" or "pcrt" or "pccol":
                                     PointCloud pointcloud = new();
                                     pointcloud.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
