@@ -24,17 +24,7 @@ public class ParticleLocator : IFile
         reader.ReadHeader();
         reader.ReadSignature(BINASignature);
         Version = reader.Read<int>();
-        long stateCount = reader.Read<long>();
-        long stateOffset = reader.Read<long>();
-        reader.ReadAtOffset(stateOffset + 64, () =>
-        {
-            for(int i = 0; i < stateCount; i++)
-            {
-                State state = new();
-                state.Read(reader);
-                States.Add(state);
-            }
-        });
+        States = reader.ReadBINAArrayStruct<State>();
         reader.Dispose();
     }
 
@@ -66,24 +56,8 @@ public class ParticleLocator : IFile
         public void Read(BINAReader reader)
         {
             StateName = reader.ReadStringTableEntry();
-            long particleCount = reader.Read<long>();
-            long particleOffset = reader.Read<long>();
-            reader.ReadAtOffset(particleOffset + 64, () =>
-            {
-                for(int i = 0; i < particleCount; i++)
-                {
-                    Particle particle = new();
-                    particle.Read(reader);
-                    Particles.Add(particle);
-                }
-            });
-            long particleNameCount = reader.Read<long>();
-            long particleNameOffset = reader.Read<long>();
-            reader.ReadAtOffset(particleNameOffset + 64, () =>
-            {
-                for (int i = 0; i < particleNameCount; i++)
-                    SoundNames.Add(reader.ReadStringTableEntry());
-            });
+            Particles = reader.ReadBINAArrayStruct<Particle>();
+            SoundNames = reader.ReadBINAStringArray();
         }
 
         public void Write(BINAWriter writer)
@@ -135,9 +109,9 @@ public class ParticleLocator : IFile
             public int Unk0 = 0;
             public string ParticleName = "";
             public string BoneName = "";
-            public int Unk1 = 0;
+            public long Unk1 = 0;
             public Vector3 Position = new(0, 0, 0);
-            public long Unk2 = 0;
+            public int Unk2 = 0;
             public Quaternion Rotation = new(0, 0, 0, 1);
             public Vector3 Scale = new(1, 1, 1);
             public int Unk3 = 0;
@@ -157,10 +131,10 @@ public class ParticleLocator : IFile
                 ParticleName = reader.ReadStringTableEntry();
                 BoneName = reader.ReadStringTableEntry();
                 //Might be just an align, because Vector3s are 16 aligned
-                Unk1 = reader.Read<int>();
+                Unk1 = reader.Read<long>();
                 Position = reader.Read<Vector3>();
                 //Might be just an align, because Quaternion are 16 aligned
-                Unk2 = reader.Read<long>();
+                Unk2 = reader.Read<int>();
                 Rotation = reader.Read<Quaternion>();
                 Scale = reader.Read<Vector3>();
                 //Might be just an align
