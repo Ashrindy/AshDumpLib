@@ -234,4 +234,23 @@ public class BINAWriter : ExtendedBinaryWriter
             }
         }
     }
+
+    public void WriteBINAArray64<T>(List<T> list, string id)
+    {
+        if (list.Count > 0)
+        {
+            AddOffset(id);
+            this.Align(8);
+            Write((long)list.Count);
+            List<object> li = new();
+            foreach (var i in list)
+                li.Add(i);
+            if (arrays.ContainsKey(id))
+                arrays[id].AddRange(li);
+            else
+                arrays.Add(id, li);
+        }
+        else
+            WriteNulls(16);
+    }
 }

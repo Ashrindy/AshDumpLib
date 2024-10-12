@@ -5,6 +5,7 @@ using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.HedgehogEngine.Needle;
 using AshDumpLib.HedgehogEngine.BINA.RFL;
 using AshDumpLib.HedgehogEngine.BINA.Animation;
+using AshDumpLib.HedgehogEngine.BINA.Terrain;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
@@ -48,13 +49,16 @@ string filepath = Console.ReadLine();
 //Reflection rfl = new(filepath, templateFilePath: "frontiers.template.rfl.json", rflName: "MasterTrialParameters");
 //rfl.SaveToFile(filepath + "_test.rfl");
 //NeedleShader needleShader = new(filepath);
-Animator asm = new(filepath);
-asm.SaveToFile(filepath + "1");
+//Animator asm = new(filepath);
+//asm.SaveToFile(filepath + "1");
 //PAC pAC = new(filepath);
 //pAC.parseFiles = false;
 //pAC.SaveToFile(filepath + "test.pac");
 //PointCloud pcmodel = new(filepath);
+//pcmodel.SaveToFile(filepath + "1");
 //ParticleLocator effdb = new(filepath);
 //effdb.SaveToFile(filepath + ".effdb");
+//Probe probe = new(filepath);
+//probe.SaveToFile(filepath + "1");
 
 Console.WriteLine("test");

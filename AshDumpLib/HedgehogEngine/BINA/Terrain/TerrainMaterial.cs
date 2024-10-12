@@ -22,15 +22,7 @@ public class TerrainMaterial : IFile
         reader.ReadHeader();
         reader.ReadSignature(BINASignature);
         Version = reader.Read<int>();
-        long dataPtr = reader.Read<long>();
-        long count = reader.Read<long>();
-        reader.Jump(dataPtr, SeekOrigin.Begin);
-        for (int i = 0; i < count; i++)
-        {
-            Material mat = new();
-            mat.Read(reader);
-            Materials.Add(mat);
-        }
+        Materials = reader.ReadBINAArrayStruct64<Material>();
         reader.Dispose();
     }
 
@@ -39,11 +31,8 @@ public class TerrainMaterial : IFile
         writer.WriteHeader();
         writer.WriteSignature(BINASignature);
         writer.Write(Version);
-        writer.AddOffset("dataPtr");
-        writer.Write(Materials.Count);
-        writer.SetOffset("dataPtr");
-        foreach (var i in Materials)
-            i.Write(writer);
+        writer.WriteBINAArray64(Materials, "materials");
+        writer.FinishWrite();
         writer.Dispose();
     }
 
@@ -84,7 +73,7 @@ public class TerrainMaterial : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 }

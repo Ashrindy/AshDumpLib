@@ -23,15 +23,7 @@ public class Probe : IFile
         reader.ReadHeader();
         reader.ReadSignature(BINASignature);
         Version = reader.Read<int>();
-        long tableOffset = reader.Read<long>();
-        long count = reader.Read<long>();
-        reader.Jump(tableOffset, SeekOrigin.Begin);
-        for (int i = 0; i < count; i++)
-        {
-            ProbeItem item = new ProbeItem();
-            item.Read(reader);
-            Probes.Add(item);
-        }
+        Probes = reader.ReadBINAArrayStruct64<ProbeItem>();
         reader.Dispose();
     }
 
@@ -40,16 +32,12 @@ public class Probe : IFile
         writer.WriteHeader();
         writer.WriteSignature(BINASignature);
         writer.Write(Version);
-        writer.AddOffset("table");
-        writer.Write<long>(Probes.Count);
-        writer.SetOffset("table");
-        foreach (var i in Probes)
-            i.Write(writer);
+        writer.WriteBINAArray64(Probes, "probes");
         writer.FinishWrite();
         writer.Dispose();
     }
 
-    public class ProbeItem
+    public class ProbeItem : IBINASerializable
     {
         public struct UnkStruct
         {
@@ -74,5 +62,7 @@ public class Probe : IFile
             writer.WriteStringTableEntry(Name);
             writer.WriteArray(Unk1);
         }
+
+        public void FinishWrite(BINAWriter writer) { }
     }
 }

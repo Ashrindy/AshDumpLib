@@ -124,6 +124,25 @@ public class BINAReader : ExtendedBinaryReader
         return list;
     }
 
+    public List<T> ReadBINAArrayStruct64<T>() where T : IBINASerializable, new()
+    {
+        List<T> list = new();
+        long offset = Read<long>();
+        this.Align(8);
+        long count = Read<long>();
+        ReadAtOffset(offset + 64, () =>
+        {
+            for (int i = 0; i < count; i++)
+            {
+                T t = new();
+                t.Read(this);
+                list.Add(t);
+            }
+        }
+        );
+        return list;
+    }
+
     public List<T> ReadBINAArray<T>() where T : unmanaged
     {
         List<T> list = new();

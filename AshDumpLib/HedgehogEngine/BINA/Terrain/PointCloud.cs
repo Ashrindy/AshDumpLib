@@ -25,15 +25,7 @@ public class PointCloud : IFile
         reader.ReadSignature(BINASignature);
 
         Version = reader.Read<int>();
-        long dataPtr = reader.Read<long>();
-        long pointCount = reader.Read<long>();
-        reader.Jump(dataPtr, SeekOrigin.Begin);
-        for (int i = 0; i < pointCount; i++)
-        {
-            Point point = new();
-            point.Read(reader);
-            Points.Add(point);
-        }
+        Points = reader.ReadBINAArrayStruct64<Point>();
 
         reader.Dispose();
     }
@@ -44,11 +36,7 @@ public class PointCloud : IFile
         writer.WriteSignature(BINASignature);
 
         writer.Write(Version);
-        writer.AddOffset("dataOffset");
-        writer.Write(Points.Count);
-        writer.SetOffset("dataOffset");
-        foreach (var i in Points)
-            i.Write(writer);
+        writer.WriteBINAArray64(Points, "points");
 
         writer.FinishWrite();
         writer.Dispose();
@@ -86,7 +74,7 @@ public class PointCloud : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 }
