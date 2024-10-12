@@ -2,6 +2,7 @@
 using Amicitia.IO.Binary;
 using System.Drawing;
 using System.Numerics;
+using System;
 
 namespace AshDumpLib.HedgehogEngine.BINA.Animation;
 
@@ -31,6 +32,7 @@ public class Animator : IFile
     public List<string> Colliders = new();
     public short BlendTreeRootNodeID = 0;
     public List<BlendSpace> BlendSpaces = new();
+    public List<short> ChildClipIndices = new();
 
     public Animator() { }
 
@@ -63,7 +65,7 @@ public class Animator : IFile
         BlendTreeRootNodeID = reader.Read<short>();
         reader.Align(4);
         BlendSpaces = reader.ReadBINAArrayStruct<BlendSpace>();
-        reader.Skip(16);
+        ChildClipIndices = reader.ReadBINAArray<short>();
         reader.Dispose();
     }
 
@@ -78,7 +80,9 @@ public class Animator : IFile
         writer.WriteBINAArray(Events, "eventsArray");
         writer.WriteBINAArray(TransitionArrays, "transitionArraysArray");
         writer.WriteBINAArray(Transitions, "transitionsArray");
+        Console.WriteLine(writer.Position);
         NullTransition.Write(writer);
+        Console.WriteLine(writer.Position);
         writer.WriteBINAArray(FlagIndices, "flagIndicesArray");
         writer.WriteBINAArray(Flags, "flagsArray");
         writer.WriteBINAArray(Variables, "variablesArray");
@@ -91,7 +95,7 @@ public class Animator : IFile
         writer.Write(BlendTreeRootNodeID);
         writer.Align(4);
         writer.WriteBINAArray(BlendSpaces, "blendSpacesArray");
-        writer.WriteNulls(16);
+        writer.WriteBINAArray(ChildClipIndices, "childClipIndices");
         writer.FinishWrite();
         writer.Dispose();
     }
@@ -100,11 +104,11 @@ public class Animator : IFile
     {
         public string Name = "";
         public AnimationSettings Settings = new();
-        public short TriggerCount = 0;
+        public ushort TriggerCount = 0;
         public short TriggerOffset = 0;
         public short BlendMaskIndex;
-        public short ChildClipIndexCount;
-        public short ChildClipIndexOffset;
+        public ushort ChildClipIndexCount;
+        public ushort ChildClipIndexOffset;
 
         public Clip() { }
 
@@ -118,11 +122,11 @@ public class Animator : IFile
             Settings.Flags = reader.Read<byte>();
             Settings.Loop = reader.Read<byte>() == 1;
             reader.Align(4);
-            TriggerCount = reader.Read<short>();
+            TriggerCount = reader.Read<ushort>();
             TriggerOffset = reader.Read<short>();
             BlendMaskIndex = reader.Read<short>();
-            ChildClipIndexCount = reader.Read<short>();
-            ChildClipIndexOffset = reader.Read<short>();
+            ChildClipIndexCount = reader.Read<ushort>();
+            ChildClipIndexOffset = reader.Read<ushort>();
             reader.Align(8);
         }
 
@@ -146,7 +150,7 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
 
         public struct AnimationSettings
@@ -247,7 +251,7 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 
@@ -300,7 +304,7 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 
@@ -327,7 +331,7 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 
@@ -352,37 +356,37 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 
     public class Layer : IBINASerializable
     {
         public string Name = "";
-        public short MaskBoneCount = 0;
-        public short MaskBoneOffset = 0;
+        public ushort LayerID = 0;
+        public short BlendMaskIndex = 0;
 
         public Layer() { }
 
         public void Read(BINAReader reader)
         {
             Name = reader.ReadStringTableEntry();
-            MaskBoneCount = reader.Read<short>();
-            MaskBoneOffset = reader.Read<short>();
+            LayerID = reader.Read<ushort>();
+            BlendMaskIndex = reader.Read<short>();
             reader.Align(8);
         }
 
         public void Write(BINAWriter writer)
         {
             writer.WriteStringTableEntry(Name);
-            writer.Write(MaskBoneCount);
-            writer.Write(MaskBoneOffset);
+            writer.Write(LayerID);
+            writer.Write(BlendMaskIndex);
             writer.Align(8);
         }
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 
@@ -412,7 +416,7 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 
@@ -427,7 +431,7 @@ public class Animator : IFile
         public TriggerType Type = TriggerType.Hit;
         public float Unk0 = 0;
         public float Unk1 = 0;
-        public short TriggerTypeIndex = 0;
+        public ushort TriggerTypeIndex = 0;
         public short ColliderIndex = 0;
         public string Name = "";
 
@@ -439,7 +443,7 @@ public class Animator : IFile
             reader.Align(4);
             Unk0 = reader.Read<float>();
             Unk1 = reader.Read<float>();
-            TriggerTypeIndex = reader.Read<short>();
+            TriggerTypeIndex = reader.Read<ushort>();
             ColliderIndex = reader.Read<short>();
             Name = reader.ReadStringTableEntry();
         }
@@ -457,19 +461,36 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
     }
 
     public class BlendSpace : IBINASerializable
     {
-        public struct BlendSpaceTriangle
+        public class BlendSpaceTriangle : IBINASerializable
         {
             public short[] NodeIndices = new short[3] { 0, 0, 0 };
             public short unk = 0;
 
             public BlendSpaceTriangle()
             {
+            }
+
+            public void Read(BINAReader reader)
+            {
+                NodeIndices = reader.ReadArray<short>(3);
+                unk = reader.Read<short>();
+            }
+
+            public void Write(BINAWriter writer)
+            {
+                writer.WriteArray(NodeIndices);
+                writer.Write(unk);
+            }
+
+            public void FinishWrite(BINAWriter writer)
+            {
+                
             }
         }
 
@@ -497,14 +518,13 @@ public class Animator : IFile
             long clipIndiceOffset = reader.Read<long>();
             long triangleOffset = reader.Read<long>();
             Nodes.AddRange(reader.ReadArrayAtOffset<Vector2>(nodeOffset + 64, nodeCount));
-            ClipIndices.AddRange(reader.ReadArrayAtOffset<short>(clipIndiceOffset + 64, (int)((triangleOffset - clipIndiceOffset) / 2)));
+            ClipIndices.AddRange(reader.ReadArrayAtOffset<short>(clipIndiceOffset + 64, nodeCount));
             reader.ReadAtOffset(triangleOffset + 64, () =>
             {
                 for (int i = 0; i < triangleCount; i++)
                 {
                     BlendSpaceTriangle tri = new();
-                    tri.NodeIndices = reader.ReadArray<short>(3);
-                    tri.unk = reader.Read<short>();
+                    tri.Read(reader);
                     Triangles.Add(tri);
                 }
             });
@@ -520,10 +540,9 @@ public class Animator : IFile
             writer.Write(Max.Y);
             writer.Write((ushort)Nodes.Count);
             writer.Write((ushort)Triangles.Count);
-            Random rnd = new();
-            id = rnd.NextInt64();
+            id = Random.Shared.NextInt64();
             writer.AddOffset("nodes" + id);
-            writer.AddOffset("clips" + id);
+            writer.AddOffset("clipIndices" + id);
             writer.AddOffset("triangles" + id);
         }
 
@@ -532,15 +551,12 @@ public class Animator : IFile
             writer.SetOffset("nodes" + id);
             foreach (var i in Nodes)
                 writer.Write(i);
-            writer.SetOffset("clips" + id);
+            writer.SetOffset("clipIndices" + id);
             foreach (var i in ClipIndices)
                 writer.Write(i);
             writer.SetOffset("triangles" + id);
             foreach (var i in Triangles)
-            {
-                writer.WriteArray(i.NodeIndices);
-                writer.Write(i.unk);
-            }
+                i.Write(writer);
         }
     }
 
@@ -553,7 +569,7 @@ public class Animator : IFile
         public void Read(BINAReader reader)
         {
             Info.Type = reader.Read<TransitionInfo.TransitionType>();
-            Info.ApplyEasing = reader.Read<byte>() == 1;
+            Info.Easing = reader.Read<TransitionInfo.TransitionEasingType>();
             Info.TargetStateIndex = reader.Read<short>();
             Info.TransitionTime = reader.Read<float>();
             TransitionTimeVariableIndex = reader.Read<short>();
@@ -563,7 +579,7 @@ public class Animator : IFile
         public void Write(BINAWriter writer)
         {
             writer.Write(Info.Type);
-            writer.Write(Info.ApplyEasing ? (byte)1 : (byte)0);
+            writer.Write(Info.Easing);
             writer.Write(Info.TargetStateIndex);
             writer.Write(Info.TransitionTime);
             writer.Write(TransitionTimeVariableIndex);
@@ -572,25 +588,34 @@ public class Animator : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            throw new NotImplementedException();
+            
         }
 
         public struct TransitionInfo
         {
             public enum TransitionType : byte
             {
-                Unk0,
-                Unk1,
-                Unk2,
-                Unk3,
-                Unk4,
-                Unk5,
-                Unk6,
-                Unk7,
+                Immediate,
+                Frozen,
+                Smooth,
+                Synchronize,
+                HoldTo,
+                HoldBoth,
+                WaitFrom,
+                WaitFromHoldTo,
+                User0,
+                User1,
+                User2
             }
 
-            public TransitionType Type = TransitionType.Unk0;
-            public bool ApplyEasing = false;
+            public enum TransitionEasingType : byte
+            {
+                Linear,
+                Cubic
+            }
+
+            public TransitionType Type = TransitionType.Immediate;
+            public TransitionEasingType Easing = TransitionEasingType.Linear;
             public short TargetStateIndex = 0;
             public float TransitionTime = 0;
 

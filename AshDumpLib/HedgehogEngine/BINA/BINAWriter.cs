@@ -1,6 +1,7 @@
 ﻿using Amicitia.IO;
 using Amicitia.IO.Binary;
 using Amicitia.IO.Streams;
+using System.Numerics;
 using System.Reflection;
 using System.Text;
 
@@ -108,9 +109,14 @@ public class BINAWriter : ExtendedBinaryWriter
                     genericMethod.Invoke(this, new object[] { i });
                 }
                 else if (i.GetType() == typeof(string))
+                {
+                    this.Align(8);
                     WriteStringTableEntry((string)i);
-                else if(i.GetType() == typeof(Int16))
+                }
+                else if (i.GetType() == typeof(Int16))
                     Write((Int16)i);
+                else if (i.GetType() == typeof(Vector2))
+                    Write((Vector2)i);
                 else
                     ((IBINASerializable)i).Write(this);
             }
@@ -120,11 +126,14 @@ public class BINAWriter : ExtendedBinaryWriter
         {
             foreach (var i in x.Value)
             {
-                if (i.GetType() == typeof(IBINASerializable))
+                if (i is IBINASerializable)
+                {
                     ((IBINASerializable)i).FinishWrite(this);
+                }  
             }
         }
 
+        this.Align(4);
         //We save the current position as StringTableOffset here so we can quickly jump back and also write it in the BINA header
         int stringTableOffset = (int)Position;
 
@@ -190,17 +199,39 @@ public class BINAWriter : ExtendedBinaryWriter
         Offsets.Add(id, Position - GenericOffset);
         OffsetValues.Add(id, 0);
         OffsetsWrite.Add(id, write);
-        this.Skip(8);
+        if(write)
+            this.Skip(8);
     }
 
-    public void WriteBINAArray<T>(List<T> list, string id)
+    public void WriteBINAArray<T>(List<T> list, string id, bool write = true)
     {
-        Write(list.Count);
-        this.Align(8);
-        AddOffset(id);
-        List<object> li = new();
-        foreach (var i in list)
-            li.Add(i);
-        arrays.Add(id, li);
+        if (write)
+        {
+            if (list.Count > 0)
+            {
+                Write(list.Count);
+                this.Align(8);
+            }
+            else
+            {
+                WriteNulls(4);
+                this.Align(8);
+                WriteNulls(8);
+            }
+        }
+
+        if(list.Count > 0)
+        {
+            List<object> li = new();
+            foreach (var i in list)
+                li.Add(i);
+            if (arrays.ContainsKey(id))
+                arrays[id].AddRange(li);
+            else
+            {
+                AddOffset(id, write);
+                arrays.Add(id, li);
+            }
+        }
     }
 }
