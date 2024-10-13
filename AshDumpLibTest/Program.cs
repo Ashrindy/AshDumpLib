@@ -6,6 +6,7 @@ using AshDumpLib.HedgehogEngine.Needle;
 using AshDumpLib.HedgehogEngine.BINA.RFL;
 using AshDumpLib.HedgehogEngine.BINA.Animation;
 using AshDumpLib.HedgehogEngine.BINA.Terrain;
+using AshDumpLib.HedgehogEngine.BINA.Misc;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
