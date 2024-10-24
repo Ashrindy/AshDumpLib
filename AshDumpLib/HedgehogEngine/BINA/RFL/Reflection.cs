@@ -14,9 +14,13 @@ public class ReflectionData
 {
     public Dictionary<string, object> Parameters = new();
 
-    public string TemplateFilePath = "";
-    public TemplateJSON TemplateData;
-    public string StructName = "";
+    string TemplateFilePath = "";
+    TemplateJSON TemplateData;
+    string StructName = "";
+
+    bool Gedit = false;
+
+    public int Version = 1;
 
     Dictionary<Tuple<string, long>, object[]> paramArrays = new();
     long Id = 0;
@@ -42,10 +46,20 @@ public class ReflectionData
         Id = Random.Shared.NextInt64();
     }
 
+    public void SetStructName(string structName) => StructName = structName;
+    public void SetGedit(bool gedit) => Gedit = gedit;
+    public TemplateJSON GetTemplateData() { return TemplateData; }
+
     public void Read(BINAReader reader)
     {
+        if (Version == 2)
+        {
+            byte[] signature = reader.ReadArray<byte>(8);
+            int namehash = reader.Read<int>();
+            reader.Skip(4);
+        }
         if (TemplateData.tags != null && TemplateData.tags.ContainsKey(StructName))
-            Parameters.Add(TemplateData.tags[StructName].structs, ReadStruct(reader, TemplateData.structs[TemplateData.tags[StructName].structs]));
+            Parameters.Add(StructName, ReadStruct(reader, TemplateData.structs[TemplateData.tags[StructName].structs]));
         else if(TemplateData.objects != null && TemplateData.objects.ContainsKey(StructName))
             Parameters.Add(TemplateData.objects[StructName].structs, ReadStruct(reader, TemplateData.structs[TemplateData.objects[StructName].structs]));
         else
@@ -370,7 +384,7 @@ public class ReflectionData
                 {
                     arrayValue = new object[(int)field.array_size];
                     for (int i = 0; i < (int)field.array_size; i++)
-                        arrayValue[i] = ReadField(reader, subtype, new() { name = field.name, type = subtype }, parent);
+                        arrayValue[i] = ReadField(reader, field.subtype, new() { name = field.name, type = field.subtype }, parent);
                 }
                 value = arrayValue;
                 break;
@@ -391,11 +405,7 @@ public class ReflectionData
                 value = reader.Read<Vector4>();
                 break;
 
-            case "matrix34":
-                //value = reader.Read<Matrix3x4>();
-                break;
-
-            case "matrix44":
+            case "matrix44" or "matrix34":
                 value = reader.Read<Matrix4x4>();
                 break;
 
@@ -482,9 +492,14 @@ public class ReflectionData
                         eValue.Values = new();
                         switch (TemplateData.enums[type].type)
                         {
-                            case "uint8" or "int8":
+                            case "int8":
                                 eValue.Selected = reader.Read<byte>();
-                                
+                                if (eValue.Selected == 255)
+                                    eValue.Selected = -1;
+                                break;
+
+                            case "uint8":
+                                eValue.Selected = reader.Read<byte>();
                                 break;
 
                             case "uint16":
@@ -618,14 +633,14 @@ public class ReflectionData
                 else
                 {
                     for (int i = 0; i < (int)field.array_size; i++)
-                        WriteField(writer, new() { name = field.name, type = subtype }, ((object[])value)[i]);
+                        WriteField(writer, new() { name = field.name, type = field.subtype }, ((object[])value)[i]);
                 }
                 break;
 
             case "object_reference":
-                if (writer.FileVersion == 2)
+                if (writer.FileVersion == 3)
                     writer.Write((Guid)value);
-                else if (writer.FileVersion == 3)
+                else if (writer.FileVersion == 2)
                     writer.WriteArray(new byte[4] { ((Guid)value).ToByteArray()[0], ((Guid)value).ToByteArray()[1], ((Guid)value).ToByteArray()[2], ((Guid)value).ToByteArray()[3] });
                 break;
 
@@ -639,6 +654,18 @@ public class ReflectionData
 
             case "vector4":
                 writer.Write((Vector4)value);
+                break;
+
+            case "matrix44" or "matrix34":
+                writer.Write((Matrix4x4)value);
+                break;
+
+            case "color8":
+                writer.Write((Color8)value);
+                break;
+
+            case "colorf":
+                writer.Write((ColorF)value);
                 break;
 
             case "flags":
@@ -680,23 +707,23 @@ public class ReflectionData
                     switch (TemplateData.enums[field.type].type)
                     {
                         case "uint8" or "int8":
-                            writer.Write((byte)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            writer.Write((byte)((EnumValue)value).Selected);
                             break;
 
                         case "uint":
-                            writer.Write((ushort)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            writer.Write((ushort)((EnumValue)value).Selected);
                             break;
 
                         case "int16":
-                            writer.Write((short)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            writer.Write((short)((EnumValue)value).Selected);
                             break;
 
                         case "uint32":
-                            writer.Write((uint)EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            writer.Write((uint)((EnumValue)value).Selected);
                             break;
 
                         case "int32":
-                            writer.Write(EnumValue.GetEnumValueFromSelectedString((string)value, TemplateData.enums[field.type]).Selected);
+                            writer.Write(((EnumValue)value).Selected);
                             break;
                     }
                 }
@@ -776,7 +803,7 @@ public class Reflection : IFile
 
         reader.ReadHeader();
 
-        Parameters.StructName = RFLName;
+        Parameters.SetStructName(RFLName);
         Parameters.Read(reader);
 
         reader.Dispose();
@@ -788,7 +815,7 @@ public class Reflection : IFile
 
         writer.WriteHeader();
 
-        Parameters.StructName = RFLName;
+        Parameters.SetStructName(RFLName);
         Parameters.Write(writer);
 
         writer.FinishWrite();

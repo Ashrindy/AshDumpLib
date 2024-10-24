@@ -41,13 +41,31 @@ public class ExtendedXmlWriter
 
     public void Write<T>(string name, T value)
     {
-        if(typeof(T) == typeof(Vector3))
+        if (typeof(T) == typeof(Vector2))
+        {
+            WriteObject(name, () =>
+            {
+                Write("X", ((Vector2)(object)value).X.ToString());
+                Write("Y", ((Vector2)(object)value).Y.ToString());
+            });
+        }
+        else if (typeof(T) == typeof(Vector3))
         {
             WriteObject(name, () =>
             {
                 Write("X", ((Vector3)(object)value).X.ToString());
                 Write("Y", ((Vector3)(object)value).Y.ToString());
                 Write("Z", ((Vector3)(object)value).Z.ToString());
+            });
+        }
+        else if (typeof(T) == typeof(Vector4))
+        {
+            WriteObject(name, () =>
+            {
+                Write("X", ((Vector4)(object)value).X.ToString());
+                Write("Y", ((Vector4)(object)value).Y.ToString());
+                Write("Z", ((Vector4)(object)value).Z.ToString());
+                Write("W", ((Vector4)(object)value).W.ToString());
             });
         }
         else if (typeof(T) == typeof(Quaternion))

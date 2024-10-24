@@ -134,6 +134,15 @@ namespace AshDumpLib
             Seek(offset, SeekOrigin.Begin);
         }
 
+        public virtual void SetOffset32(string id)
+        {
+            long offset = Position;
+            Seek(Offsets[id], SeekOrigin.Begin);
+            Write((int)offset);
+            OffsetValues[id] = offset;
+            Seek(offset, SeekOrigin.Begin);
+        }
+
         public virtual void WriteHeader()
         {
 

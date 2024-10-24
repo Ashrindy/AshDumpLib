@@ -1,6 +1,15 @@
-﻿using AshDumpLib.HedgehogEngine.BINA.Animation;
-using AshDumpTool;
+﻿using Amicitia.IO.Binary;
+using AshDumpLib.HedgehogEngine.Archives;
+using AshDumpLib.HedgehogEngine.BINA.Animation;
+using AshDumpLib.HedgehogEngine.BINA.Density;
+using AshDumpLib.HedgehogEngine.BINA.RFL;
+using AshDumpLib.HedgehogEngine.BINA.Terrain;
+using AshDumpLib.Helpers.Archives;
+using Spectre.Console;
+using System.Text.Json;
 using System.Xml;
+
+namespace AshDumpTool;
 
 public class Program
 {
@@ -9,11 +18,89 @@ public class Program
         string filepath = "";
         if (args.Length == 0)
         {
+            var hetable = new Table();
+            hetable.AddColumn("Hedgehog Engine 2");
+            hetable.AddRow("ParticleLocator (.effdb)");
+            hetable.AddRow("PAC (.pac)");
+            hetable.AddRow("PointCloudModel (.pcmodel)");
+            hetable.AddRow("PointCloudCollision (.pccol)");
+            hetable.AddRow("PointCloudLight (.pcrt)");
+            hetable.AddRow("DensityPointCloud (.densitypointcloud)");
+            //hetable.AddRow("Reflection (.rfl)");
+            hetable.AddRow("ObjectWorld (.gedit)");
+            AnsiConsole.Write(hetable);
             Console.WriteLine("What's the file?");
             filepath = Console.ReadLine();
         }
         else
             filepath = args[0];
+
+        if(Directory.Exists(filepath))
+        {
+            var pactable = new Table();
+            Console.Clear();
+            Console.WriteLine("What .pac type?");
+            pactable.AddColumn("Game");
+            pactable.AddColumn("Keyword");
+            pactable.AddRow("Sonic Frontiers", "rangers");
+            pactable.AddRow("Sonic X Shadow Generations", "miller");
+            AnsiConsole.Write(pactable);
+            string pactype = Console.ReadLine();
+            switch(pactype)
+            {
+                case "rangers":
+                    PAC rPac = new();
+                    rPac.parseFiles = false;
+                    rPac.FilePath = filepath;
+                    rPac.FileName = Path.GetFileName(filepath) + ".pac";
+                    rPac.Version = PAC.Version403;
+                    foreach (var i in Directory.GetFiles(filepath))
+                    {
+                        IFile x = new(i, File.ReadAllBytes(i));
+                        if(x.Extension == "txt")
+                        {
+                            using(StreamReader reader = new(i))
+                            {
+                                string line;
+                                while((line = reader.ReadLine()) != null)
+                                    rPac.ParentPaths.Add(line);
+                            }
+                        }
+                        else
+                            rPac.AddFile(x);
+                    }
+                    rPac.SaveToFile(filepath + ".pac");
+                    return;
+                    break;
+
+                case "miller":
+                    PAC mPac = new();
+                    mPac.Version = PAC.Version405;
+                    foreach (var i in Directory.GetFiles(filepath))
+                    {
+                        IFile x = new(i, File.ReadAllBytes(i));
+                        if (x.Extension == "txt")
+                        {
+                            using (StreamReader reader = new(i))
+                            {
+                                string line;
+                                while ((line = reader.ReadLine()) != null)
+                                    mPac.ParentPaths.Add(line);
+                            }
+                        }
+                        else
+                            mPac.AddFile(x);
+                    }
+                    mPac.SaveToFile(filepath + ".pac");
+                    return;
+                    break;
+
+                default:
+                    Console.WriteLine("Unsupported/wrong keyword!");
+                    return;
+                    break;
+            }
+        }
 
         switch(Path.GetExtension(filepath))
         {
@@ -51,7 +138,56 @@ public class Program
                                 state.SoundNames.Add(x.FirstChild.InnerText);
                             effdbW.States.Add(state);
                         }
-                        effdbW.SaveToFile(filepath + ".effdb");
+                        effdbW.SaveToFile(filepath.Replace(".xml", ".effdb"));
+                        break;
+
+                    case "PointCloudModel" or "PointCloudCollision" or "PointCloudLight":
+                        PointCloud pcmodelW = new();
+                        pcmodelW.Version = int.Parse(reader.DocumentElement.Attributes[0].Value);
+                        foreach(XmlNode i in reader.DocumentElement.FirstChild.ChildNodes)
+                        {
+                            PointCloud.Point point = new();
+                            point.InstanceName = i.Attributes[0].Value;
+                            point.ResourceName = i.Attributes[1].Value;
+                            XmlNode position = i.ChildNodes[0];
+                            point.Position = new(float.Parse(position.ChildNodes[0].InnerText), float.Parse(position.ChildNodes[1].InnerText), float.Parse(position.ChildNodes[2].InnerText));
+                            position = i.ChildNodes[1];
+                            point.Rotation = new(float.Parse(position.ChildNodes[0].InnerText), float.Parse(position.ChildNodes[1].InnerText), float.Parse(position.ChildNodes[2].InnerText));
+                            position = i.ChildNodes[2];
+                            point.Scale = new(float.Parse(position.ChildNodes[0].InnerText), float.Parse(position.ChildNodes[1].InnerText), float.Parse(position.ChildNodes[2].InnerText));
+                            pcmodelW.Points.Add(point);
+                        }
+                        string pcmodelExtension = ".pcmodel";
+                        switch (reader.DocumentElement.Name)
+                        {
+                            case "PointCloudCollision":
+                                pcmodelExtension = ".pccol";
+                                break;
+
+                            case "PointCloudLight":
+                                pcmodelExtension = ".pcrt";
+                                break;
+                        }
+                        pcmodelW.SaveToFile(filepath.Replace(".xml", pcmodelExtension));
+                        break;
+
+                    case "DensityPointCloud":
+                        DensityPointCloud pcdensityW = new();
+                        pcdensityW.Version = int.Parse(reader.DocumentElement.Attributes[0].Value);
+                        foreach (XmlNode i in reader.DocumentElement.FirstChild.ChildNodes)
+                        {
+                            DensityPointCloud.FoliagePoint point = new();
+                            point.ID = int.Parse(i.Attributes[0].Value);
+                            point.Unk = int.Parse(i.Attributes[1].Value);
+                            XmlNode position = i.ChildNodes[0];
+                            point.Position = new(float.Parse(position.ChildNodes[0].InnerText), float.Parse(position.ChildNodes[1].InnerText), float.Parse(position.ChildNodes[2].InnerText));
+                            position = i.ChildNodes[1];
+                            point.Rotation = new(float.Parse(position.ChildNodes[0].InnerText), float.Parse(position.ChildNodes[1].InnerText), float.Parse(position.ChildNodes[2].InnerText), float.Parse(position.ChildNodes[3].InnerText));
+                            position = i.ChildNodes[2];
+                            point.Scale = new(float.Parse(position.ChildNodes[0].InnerText), float.Parse(position.ChildNodes[1].InnerText), float.Parse(position.ChildNodes[2].InnerText));
+                            pcdensityW.FoliagePoints.Add(point);
+                        }
+                        pcdensityW.SaveToFile(filepath.Replace(".xml", ".densitypointcloud"));
                         break;
                 }
                 break;
@@ -59,7 +195,7 @@ public class Program
             case ".effdb":
                 ParticleLocator effdb = new(filepath);
 
-                ExtendedXmlWriter writer = new(filepath + ".xml", "ParticleLocator", new() { new("version", effdb.Version) } );
+                ExtendedXmlWriter writer = new(filepath.Replace(".effdb", ".xml"), "ParticleLocator", new() { new("version", effdb.Version) } );
                 writer.WriteObject("States", () =>
                 {
                     foreach(var i in effdb.States)
@@ -94,6 +230,103 @@ public class Program
                     }
                 });
                 writer.Close();
+                break;
+
+            case ".pac":
+                PAC pAC = new();
+                pAC.parseFiles = false;
+                pAC.Open(filepath);
+                Directory.CreateDirectory(filepath.Replace(".pac", ""));
+                foreach(var i in pAC.Files)
+                    File.WriteAllBytes($"{filepath.Replace(".pac", "")}/{i.FileName}", i.Data);
+                string dependencies = "";
+                foreach (var i in pAC.ParentPaths)
+                    dependencies += $"{i}\0";
+                File.WriteAllText($"{filepath.Replace(".pac", "")}/!DEPENDENCIES.txt", dependencies);
+                break;
+
+            case ".pcmodel" or ".pccol" or ".pcrt":
+                PointCloud pcmodel = new(filepath);
+
+                string mainName = "PointCloudModel";
+                switch(Path.GetExtension(filepath))
+                {
+                    case ".pccol":
+                        mainName = "PointCloudCollision";
+                        break;
+
+                    case ".pcrt":
+                        mainName = "PointCloudLight";
+                        break;
+                }
+                ExtendedXmlWriter pcmodelwriter = new(filepath.Replace(Path.GetExtension(filepath), ".xml"), mainName, new() { new("version", pcmodel.Version) });
+                pcmodelwriter.WriteObject("Points", () =>
+                {
+                    foreach (var i in pcmodel.Points)
+                    {
+                        pcmodelwriter.WriteObject("Point", new() { new("InstanceName", i.InstanceName), new("ResourceName", i.ResourceName) }, () =>
+                        {
+                            pcmodelwriter.Write("Position", i.Position);
+                            pcmodelwriter.Write("Rotation", i.Rotation);
+                            pcmodelwriter.Write("Scale", i.Scale);
+                        });
+                    }
+                });
+                pcmodelwriter.Close();
+                break;
+
+            case ".densitypointcloud":
+                DensityPointCloud pcdensity = new(filepath);
+
+                ExtendedXmlWriter pcdensitywriter = new(filepath.Replace(".densitypointcloud", ".xml"), "DensityPointCloud", new() { new("version", pcdensity.Version) });
+                pcdensitywriter.WriteObject("Points", () =>
+                {
+                    foreach (var i in pcdensity.FoliagePoints)
+                    {
+                        pcdensitywriter.WriteObject("FoliagePoint", new() { new("ID", i.ID), new("Unk", i.Unk) }, () =>
+                        {
+                            pcdensitywriter.Write("Position", i.Position);
+                            pcdensitywriter.Write("Rotation", i.Rotation);
+                            pcdensitywriter.Write("Scale", i.Scale);
+                        });
+                    }
+                });
+                pcdensitywriter.Close();
+                break;
+
+            //case ".rfl":
+            //    Console.Clear();
+            //    Console.WriteLine("What is the template?");
+            //    string template = Console.ReadLine();
+            //    Console.WriteLine("What is the RFLClass name?");
+            //    string rflClassName = Console.ReadLine();
+            //    Reflection rfl = new(filepath, template, rflClassName);
+            //    ExtendedXmlWriter xmlRflWriter = new(filepath.Replace(".rfl", ".xml"));
+            //    ReflectionWriter rflWriter = new(xmlRflWriter, rfl.Parameters);
+            //    rflWriter.Write();
+            //    xmlRflWriter.Close();
+            //    break;
+
+            case ".gedit":
+                Console.Clear();
+                Console.WriteLine("What is the template?");
+                string gTemplate = Console.ReadLine();
+                ObjectWorld gedit = new(filepath, gTemplate);
+                gedit.ToHson().Save(filepath.Replace(".gedit", ".hson"), jsonOptions: new() { Indented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping, SkipValidation = true});
+                break;
+
+            case ".hson":
+                Console.Clear();
+                Console.WriteLine("What is the template?");
+                string hTemplate = Console.ReadLine();
+                ObjectWorld.TemplateData = ReflectionData.Template.GetTemplateFromFilePath(hTemplate);
+                libHSON.Project hson = new();
+                hson.Load(filepath);
+                ObjectWorld.ToGedit(hson).SaveToFile(filepath.Replace(".hson", ".gedit"));
+                break;
+
+            default:
+                Console.WriteLine("Unsupported file format!");
                 break;
         }
     }

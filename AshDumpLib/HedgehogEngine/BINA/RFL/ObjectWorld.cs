@@ -216,13 +216,17 @@ public class ObjectWorld : IFile
                         Tags.Add(tag);
                     }
                 });
-                ReflectionData.Template.StructTemplate objTmp = Parameters.TemplateData.structs[Parameters.TemplateData.objects[TypeName].structs];
-                long paramPtr = reader.Read<long>();
-                reader.ReadAtOffset(paramPtr + 64, () =>
+                if (Parameters.GetTemplateData().objects.ContainsKey(TypeName))
                 {
-                    Parameters.StructName = TypeName;
-                    Parameters.Read(reader);
-                });
+                    ReflectionData.Template.StructTemplate objTmp = Parameters.GetTemplateData().structs[Parameters.GetTemplateData().objects[TypeName].structs];
+                    long paramPtr = reader.Read<long>();
+                    reader.ReadAtOffset(paramPtr + 64, () =>
+                    {
+                        Parameters.SetStructName(TypeName);
+                        Parameters.SetGedit(true);
+                        Parameters.Read(reader);
+                    });
+                }
             });
         }
 
@@ -267,7 +271,8 @@ public class ObjectWorld : IFile
         public void FinishWrite(BINAWriter writer)
         {
             writer.SetOffset(ObjectName + ID.ToString() + "params");
-            Parameters.StructName = TypeName;
+            Parameters.SetStructName(Parameters.GetTemplateData().objects[TypeName].structs);
+            Parameters.SetGedit(true);
             Parameters.Write(writer);
         }
 
@@ -276,6 +281,8 @@ public class ObjectWorld : IFile
             public string Name = "";
             public ReflectionData Parameters = new(TemplateData);
             public Object Owner = new();
+
+            private long dataSizePtr = 0;
 
             public void Read(BINAReader reader)
             {
@@ -288,9 +295,10 @@ public class ObjectWorld : IFile
                     long dataPtr = reader.Read<long>();
                     reader.ReadAtOffset(dataPtr + 64, () =>
                     {
-                        if (Parameters.TemplateData.tags != null)
+                        if (Parameters.GetTemplateData().tags != null)
                         {
-                            Parameters.StructName = Name;
+                            Parameters.SetStructName(Parameters.GetTemplateData().tags[Name].structs);
+                            Parameters.SetGedit(true);
                             Parameters.Read(reader);
                         }
                     });
@@ -302,19 +310,27 @@ public class ObjectWorld : IFile
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name);
                 writer.WriteNulls(8);
                 writer.WriteStringTableEntry(Name);
-                writer.AddOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "datasize", false);
+                dataSizePtr = writer.Position;
+                writer.WriteNulls(8);
                 writer.AddOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
                 writer.Align(16);
             }
 
             public void FinishWrite(BINAWriter writer)
             {
-                writer.Align(GetAlignment(Parameters.TemplateData.structs[Parameters.Parameters.ElementAt(0).Key].fields[0], writer.FileVersion));
+                Dictionary<string, object> tempParam = new()
+                {
+                    { TemplateData.tags[Name].structs, Parameters.Parameters.ElementAt(0).Value }
+                };
+                Parameters.Parameters = tempParam;
+                writer.Align(GetAlignment(Parameters.GetTemplateData().structs[Parameters.Parameters.ElementAt(0).Key].fields[0], writer.FileVersion));
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
-                Parameters.StructName = Name;
+                long dataSize = writer.Position;
+                Parameters.SetStructName(TemplateData.tags[Name].structs);
+                Parameters.SetGedit(true);
                 Parameters.Write(writer);
-                long dataSize = writer.Position - writer.GetOffsetValue(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
-                writer.WriteAt(dataSize, writer.GetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "datasize"));
+                dataSize = writer.Position - dataSize;
+                writer.WriteAt(dataSize, dataSizePtr);
             }
         }
     }
@@ -342,22 +358,39 @@ public class ObjectWorld : IFile
         libHSON.Object obj = new(i.ID, i.ObjectName, i.TypeName, position: i.Position, rotation: Helpers.ToQuaternion(i.Rotation), parent: parentObj);
         ParameterCollection tags = new();
         foreach (var x in i.Tags)
-            tags.Add(x.Name, CreateHsonParameter(x.Parameters.Parameters));
+            tags = CreateHsonParameterCollection(x.Parameters.Parameters);
         obj.LocalParameters.Add("tags", new(tags));
-
-        CreateHsonParameters(i.Parameters.Parameters, ref obj);
+        Dictionary<string, object> param = GeditToHsonParams(i.Parameters.Parameters);
+        CreateHsonParameterCollection(param, ref obj.LocalParameters);
         return obj;
     }
 
-    void CreateHsonParameters(Dictionary<string, object> parameter, ref libHSON.Object obj)
+    static Dictionary<string, object> GeditToHsonParams(Dictionary<string, object> ogparam)
     {
-        foreach (var x in parameter)
-            obj.LocalParameters.Add(x.Key, CreateHsonParameter((Dictionary<string, object>)x.Value));
+        Dictionary<string, object> newparam = new();
+        foreach (var x in ogparam)
+        {
+            if (TemplateData.structs.ContainsKey(x.Key))
+            {
+                Dictionary<string,object> tempparam = GeditToHsonParams((Dictionary<string, object>)x.Value);
+                foreach (var i in tempparam)
+                    newparam.Add(i.Key, i.Value);
+            }
+            else
+                newparam.Add(x.Key, x.Value);
+        }
+        return newparam;
     }
 
-    Parameter CreateHsonParameter(Dictionary<string, object> parameter)
+    ParameterCollection CreateHsonParameterCollection(Dictionary<string, object> parameter)
     {
         ParameterCollection paramColl = new();
+        CreateHsonParameterCollection(parameter, ref paramColl);
+        return paramColl;
+    }
+
+    void CreateHsonParameterCollection(Dictionary<string, object> parameter, ref ParameterCollection paramColl)
+    {
         foreach (var i in parameter)
         {
             Parameter param = new();
@@ -387,9 +420,28 @@ public class ObjectWorld : IFile
             else if (type == typeof(string))
                 param = new((string)i.Value);
             else if (type == typeof(Dictionary<string, object>))
-                param = CreateHsonParameter((Dictionary<string, object>)i.Value);
+                param = new(CreateHsonParameterCollection((Dictionary<string, object>)i.Value));
             else if (type == typeof(Guid))
                 param = new(((Guid)i.Value).ToString());
+            else if (type == typeof(Vector2))
+            {
+                List<Parameter> vector2 = new()
+                {
+                    new(((Vector2)i.Value).X),
+                    new(((Vector2)i.Value).Y)
+                };
+                param = new(vector2);
+            }
+            else if (type == typeof(Vector3))
+            {
+                List<Parameter> vector3 = new()
+                {
+                    new(((Vector3)i.Value).X),
+                    new(((Vector3)i.Value).Y),
+                    new(((Vector3)i.Value).Z)
+                };
+                param = new(vector3);
+            }
             else if (type == typeof(object[]))
             {
                 List<Parameter> paramArray = new();
@@ -418,11 +470,11 @@ public class ObjectWorld : IFile
                     else if (typee == typeof(double))
                         paramItem = new((double)x);
                     else if (typee == typeof(ReflectionData.EnumValue))
-                        paramItem = new(((ReflectionData.EnumValue)x).Values[((ReflectionData.EnumValue)x).Selected]);
+                        paramItem = new(((ReflectionData.EnumValue)x).Values[(int)((ReflectionData.EnumValue)x).Selected]);
                     else if (typee == typeof(string))
                         paramItem = new((string)x);
                     else if (typee == typeof(Dictionary<string, object>))
-                        paramItem = CreateHsonParameter((Dictionary<string, object>)x);
+                        paramItem = new(CreateHsonParameterCollection((Dictionary<string, object>)x));
                     else if (typee == typeof(Guid))
                         paramItem = new(((Guid)x).ToString());
                     paramArray.Add(paramItem);
@@ -431,7 +483,6 @@ public class ObjectWorld : IFile
             }
             paramColl.Add(i.Key, param);
         }
-        return new(paramColl);
     }
     #endregion
 
@@ -459,20 +510,44 @@ public class ObjectWorld : IFile
         {
             Object.Tag tag = new() { Name = x.Key };
             tag.Parameters = new(TemplateData);
-            tag.Parameters.Parameters = CreateGeditParameter(new(x.Key, x.Value));
+            tag.Parameters.Parameters = CreateGeditParameter(new(TemplateData.tags[tag.Name].structs, x.Value), TemplateData.tags[tag.Name].structs);
             tag.Owner = obj;
             obj.Tags.Add(tag);
         }
         obj.Parameters = new(TemplateData);
-        obj.Parameters.Parameters = CreateGeditParameter(new(i.LocalParameters.ElementAt(1).Key, i.LocalParameters.ElementAt(1).Value));
+        i.LocalParameters.Remove("tags");
+        i.LocalParameters = ConvertHSONToGedit(i.LocalParameters, TemplateData.objects[obj.TypeName].structs);
+        obj.Parameters.Parameters = CreateGeditParameter(new(TemplateData.objects[obj.TypeName].structs, new(i.LocalParameters)), TemplateData.objects[obj.TypeName].structs);
+        obj.Parameters.Parameters = (Dictionary<string, object>)obj.Parameters.Parameters.ElementAt(0).Value;
         return obj;
     }
 
-    static Dictionary<string, object> CreateGeditParameter(Tuple<string, Parameter> param)
+    static ParameterCollection ConvertHSONToGedit(ParameterCollection paramColl, string strName)
+    {
+        ParameterCollection mainColl = new();
+        int start = 0;
+        if (TemplateData.structs[strName].parent != null)
+        {
+            ParameterCollection parentColl = new();
+            start = TemplateData.structs[TemplateData.structs[strName].parent].fields.Length;
+            for (int i = 0; i < TemplateData.structs[TemplateData.structs[strName].parent].fields.Length; i++)
+                parentColl.Add(paramColl.ElementAt(i).Key, paramColl.ElementAt(i).Value);
+            mainColl.Add(TemplateData.structs[strName].parent, new(parentColl));
+        }
+
+        for (int i = start; i < paramColl.Count; i++)
+            mainColl.Add(paramColl.ElementAt(i).Key, paramColl.ElementAt(i).Value);
+
+        ParameterCollection finalColl = new()
+        { { strName, new(mainColl) } };
+        return finalColl;
+    }
+
+    static Dictionary<string, object> CreateGeditParameter(Tuple<string, Parameter> param, string strName)
     {
         Dictionary<string, object> prm = new()
         {
-            { param.Item1, CreateGeditParameterObject(new(param.Item1, param.Item2), param.Item1) }
+            { param.Item1, CreateGeditParameterObject(new(param.Item1, param.Item2), strName) }
         };
         return prm;
     }
@@ -500,34 +575,57 @@ public class ObjectWorld : IFile
                 break;
 
             case ParameterType.String:
-                if (template.structs.ContainsKey(strName))
+                if(Guid.TryParse(param.Item2.ValueString, out _))
                 {
+                    value = Guid.Parse(param.Item2.ValueString);
+                }
+                else if (template.structs.ContainsKey(strName))
+                {
+                    bool isEnum = false;
                     foreach (var i in template.structs[strName].fields)
                     {
                         if (i.name == param.Item1 && template.enums.ContainsKey(i.type))
                         {
+                            isEnum = true;
                             ReflectionData.EnumValue eVal = new();
                             eVal.Values = new();
                             foreach (var x in template.enums[i.type].values)
                                 eVal.Values.Add(x.Value.value, x.Key);
                             eVal.Selected = template.enums[i.type].values[param.Item2.ValueString].value;
+                            value = eVal;
                         }
                     }
+                    if(!isEnum)
+                        value = param.Item2.ValueString;
                 }
                 else
                     value = param.Item2.ValueString;
                 break;
 
             case ParameterType.Array:
-                value = new object[param.Item2.ValueArray.Count];
-                for (int i = 0; i < param.Item2.ValueArray.Count; i++)
-                    ((object[])value)[i] = CreateGeditParameterObject(new(param.Item1, param.Item2.ValueArray[i]), strName);
+                if (param.Item2.ValueArray.Where(x => x.ValueFloatingPoint != null).Count() == 3)
+                    value = new Vector3((float)param.Item2.ValueArray[0].ValueFloatingPoint, (float)param.Item2.ValueArray[1].ValueFloatingPoint, (float)param.Item2.ValueArray[2].ValueFloatingPoint);
+                else if (param.Item2.ValueArray.Where(x => x.ValueFloatingPoint != null).Count() == 2)
+                    value = new Vector2((float)param.Item2.ValueArray[0].ValueFloatingPoint, (float)param.Item2.ValueArray[1].ValueFloatingPoint);
+                else
+                {
+                    value = new object[param.Item2.ValueArray.Count];
+                    for (int i = 0; i < param.Item2.ValueArray.Count; i++)
+                        ((object[])value)[i] = CreateGeditParameterObject(new(param.Item1, param.Item2.ValueArray[i]), TemplateData.structs[strName].fields.Where(x => x.name == param.Item1).First().subtype);
+                }
                 break;
 
             case ParameterType.Object:
                 Dictionary<string, object> str = new();
-                foreach (var i in param.Item2.ValueObject)
-                    str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), i.Key));
+                if(strName == param.Item1)
+                    foreach (var i in param.Item2.ValueObject)
+                        str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), strName));
+                else if(param.Item1 == TemplateData.structs[strName].parent)
+                    foreach (var i in param.Item2.ValueObject)
+                        str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), TemplateData.structs[strName].parent));
+                else
+                    foreach (var i in param.Item2.ValueObject)
+                        str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), TemplateData.structs[strName].fields.Where(x => x.name == param.Item1).First().type));
                 value = str;
                 break;
         }
