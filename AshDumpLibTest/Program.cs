@@ -53,10 +53,22 @@ string filepath = Console.ReadLine();
 //NeedleShader needleShader = new(filepath);
 //Animator asm = new(filepath);
 //asm.SaveToFile(filepath + "1");
-PAC pAC = new();
-pAC.parseFiles = false;
-pAC.Open(filepath);
-pAC.SaveToFile(filepath+".pac");
+foreach(var i in Directory.GetFiles(filepath))
+{
+    PAC pAC = new();
+    pAC.parseFiles = false;
+    pAC.Open(i);
+    if(pAC.Files.Where(x => x.Extension == "cam-anim").Count() > 0)
+        foreach(var l in pAC.Files.Where(x => x.Extension == "cam-anim"))
+        {
+            CameraAnimation camanim = new();
+            camanim.Open(l.FileName, l.Data);
+            foreach(var m in camanim.Cameras)
+                if(m.AspectRatio > 1.79 || m.AspectRatio < 1.76)
+                    Console.WriteLine($"{i}\\{l.FileName}: {m.Name} - bad aspect ratio");
+        }
+}
+
 //pAC.parseFiles = false;
 //pAC.SaveToFile(filepath + "test.pac");
 //PointCloud pcmodel = new(filepath);

@@ -113,7 +113,7 @@ public class Material
         var pointer = reader.Read<uint>();
         var prePos = reader.Position;
         reader.Jump(pointer, SeekOrigin.Begin);
-        Name = reader.ReadStringTableEntry();
+        Name = reader.ReadStringTableEntry(dontCheckForZeroes: true);
         FPS = reader.Read<float>();
         FrameStart = reader.Read<float>();
         FrameEnd = reader.Read<float>();

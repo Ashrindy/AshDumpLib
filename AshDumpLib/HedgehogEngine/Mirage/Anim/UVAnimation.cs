@@ -43,8 +43,8 @@ public class UVAnimation : IFile
         }
 
         reader.Jump(uvsPointer, SeekOrigin.Begin);
-        MaterialName = reader.ReadStringTableEntry();
-        TextureName = reader.ReadStringTableEntry();
+        MaterialName = reader.ReadStringTableEntry(dontCheckForZeroes: true);
+        TextureName = reader.ReadStringTableEntry(dontCheckForZeroes: true);
         var uvCount = reader.Read<int>();
         for (int i = 0; i < uvCount; i++)
         {
@@ -120,7 +120,7 @@ public class UV
         var pointer = reader.Read<uint>();
         var prePos = reader.Position;
         reader.Jump(pointer, SeekOrigin.Begin);
-        Name = reader.ReadStringTableEntry();
+        Name = reader.ReadStringTableEntry(dontCheckForZeroes: true);
         FPS = reader.Read<float>();
         FrameStart = reader.Read<float>();
         FrameEnd = reader.Read<float>();

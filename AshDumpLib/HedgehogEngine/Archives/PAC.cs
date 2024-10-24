@@ -944,7 +944,7 @@ public class PAC : Archive
             rootChunk.uncompressedData = uncompressedRootData.ToArray();
         }
         reader.Seek(prePos1, SeekOrigin.Begin);
-        File.WriteAllBytes(FilePath + "_og.root", rootChunk.uncompressedData);
+        //File.WriteAllBytes(FilePath + "_og.root", rootChunk.uncompressedData);
         PAC rootPac = new();
         rootPac.Open(FileName + ".root", rootChunk.uncompressedData, parseFiles);
         foreach (var x in rootPac.Files)
@@ -968,7 +968,7 @@ public class PAC : Archive
                 }
                 rootPac.dependencies[i].main.uncompressedData = uncompressedData.ToArray();
             }
-            File.WriteAllBytes(FilePath + "_og." + i, rootPac.dependencies[i].main.uncompressedData);
+            //File.WriteAllBytes(FilePath + "_og." + i, rootPac.dependencies[i].main.uncompressedData);
             PAC tempPac = new();
             tempPac.Open(rootPac.dependencies[i].name, rootPac.dependencies[i].main.uncompressedData, parseFiles);
             foreach (var x in tempPac.Files)
@@ -1025,7 +1025,7 @@ public class PAC : Archive
             dep.chunks = ddChunks;
             deps.Add(dep);
             depPacs.Add(depPac);
-            File.WriteAllBytes($"{FilePath}.{index}", dmemStream.ToArray());
+            //File.WriteAllBytes($"{FilePath}.{index}", dmemStream.ToArray());
             index++;
         }
         PAC rootPac = new();
@@ -1190,7 +1190,7 @@ public class PAC : Archive
 
         writer.Align(16);
 
-        File.WriteAllBytes(FilePath + ".root", rootChunk.uncompressedData);
+        //File.WriteAllBytes(FilePath + ".root", rootChunk.uncompressedData);
     }
 
     public struct PACVersion

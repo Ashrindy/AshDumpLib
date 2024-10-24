@@ -45,10 +45,10 @@ public class ExtendedBinaryReader : BinaryObjectReader
         Seek(offset + genericOffset, origin);
     }
 
-    public virtual string ReadStringTableEntry(bool useGenOffset = false)
+    public virtual string ReadStringTableEntry(bool useGenOffset = false, bool dontCheckForZeroes = false)
     {
         long pointer = Read<int>();
-        if (pointer > 0)
+        if (pointer > 0 || dontCheckForZeroes)
         {
             if (useGenOffset)
                 pointer += genericOffset;

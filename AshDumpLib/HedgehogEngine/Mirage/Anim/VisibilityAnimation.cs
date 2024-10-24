@@ -40,8 +40,8 @@ public class VisibilityAnimation : IFile
         }
 
         reader.Jump(vissPointer, SeekOrigin.Begin);
-        SkeletonName = reader.ReadStringTableEntry();
-        InputName = reader.ReadStringTableEntry();
+        SkeletonName = reader.ReadStringTableEntry(dontCheckForZeroes: true);
+        InputName = reader.ReadStringTableEntry(dontCheckForZeroes: true);
         var visCount = reader.Read<int>();
         for (int i = 0; i < visCount; i++)
         {
@@ -117,7 +117,7 @@ public class Visibility
         var pointer = reader.Read<uint>();
         var prePos = reader.Position;
         reader.Jump(pointer, SeekOrigin.Begin);
-        Name = reader.ReadStringTableEntry();
+        Name = reader.ReadStringTableEntry(dontCheckForZeroes: true);
         FPS = reader.Read<float>();
         FrameStart = reader.Read<float>();
         FrameEnd = reader.Read<float>();

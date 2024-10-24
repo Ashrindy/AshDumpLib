@@ -122,7 +122,7 @@ public class Camera
         var prePos = reader.Position;
         reader.Jump(pointer, SeekOrigin.Begin);
 
-        Name = reader.ReadStringTableEntry();
+        Name = reader.ReadStringTableEntry(dontCheckForZeroes: true);
         RotationOrAim = reader.Read<byte>() == 1;
         reader.Skip(3);
         FPS = reader.Read<float>();
