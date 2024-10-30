@@ -108,7 +108,7 @@ public class Animator : IFile
         public short TriggerOffset = 0;
         public short BlendMaskIndex;
         public ushort ChildClipIndexCount;
-        public ushort ChildClipIndexOffset;
+        public short ChildClipIndexOffset;
 
         public Clip() { }
 
@@ -119,14 +119,17 @@ public class Animator : IFile
             Settings.Start = reader.Read<float>();
             Settings.End = reader.Read<float>();
             Settings.Speed = reader.Read<float>();
-            Settings.Flags = reader.Read<byte>();
+            byte Flags = reader.Read<byte>();
+            Settings.Mirror = (Flags & (byte)AnimationSettings.Flag.Mirror) != 0;
+            Settings.PlayUntilAnimationEnd = (Flags & (byte)AnimationSettings.Flag.PlayUntilAnimationEnd) != 0;
+            Settings.NoAnimationResolution = (Flags & (byte)AnimationSettings.Flag.NoAnimationResolution) != 0;
             Settings.Loop = reader.Read<byte>() == 1;
             reader.Align(4);
             TriggerCount = reader.Read<ushort>();
             TriggerOffset = reader.Read<short>();
             BlendMaskIndex = reader.Read<short>();
             ChildClipIndexCount = reader.Read<ushort>();
-            ChildClipIndexOffset = reader.Read<ushort>();
+            ChildClipIndexOffset = reader.Read<short>();
             reader.Align(8);
         }
 
@@ -137,7 +140,11 @@ public class Animator : IFile
             writer.Write(Settings.Start);
             writer.Write(Settings.End);
             writer.Write(Settings.Speed);
-            writer.Write(Settings.Flags);
+            byte Flags = 0;
+            if (Settings.Mirror) Flags |= (byte)AnimationSettings.Flag.Mirror;
+            if (Settings.PlayUntilAnimationEnd) Flags |= (byte)AnimationSettings.Flag.PlayUntilAnimationEnd;
+            if (Settings.NoAnimationResolution) Flags |= (byte)AnimationSettings.Flag.NoAnimationResolution;
+            writer.Write(Flags);
             writer.Write(Settings.Loop ? (byte)1 : (byte)0);
             writer.Align(4);
             writer.Write(TriggerCount);
@@ -157,16 +164,18 @@ public class Animator : IFile
         {
             public enum Flag : byte
             {
-                Mirror,
+                Mirror = 1,
                 PlayUntilAnimationEnd,
-                NoAnimationResolution
+                NoAnimationResolution = 4
             }
 
             public string ResourceName = "";
             public float Start = 0;
             public float End = 0;
             public float Speed = 1;
-            public byte Flags = 0;
+            public bool Mirror = false;
+            public bool PlayUntilAnimationEnd = true;
+            public bool NoAnimationResolution = false;
             public bool Loop = false;
 
             public AnimationSettings()
@@ -187,14 +196,19 @@ public class Animator : IFile
 
         public enum Flag : byte
         {
-            Loops,
-            Unk1
+            Loops = 1,
+            Unk1,
+            Unk2 = 4,
+            Unk3 = 8
         }
 
         public string Name = "";
         public StateType Type = StateType.NullState;
         public bool TransitImmediately = false;
-        public byte Flags = 0;
+        public bool Loops = false;
+        public bool Unk1 = false;
+        public bool Unk2 = false;
+        public bool Unk3 = false;
         public byte DefaultLayerIndex = 0;
         public short RootBlendNodeOrClipIndex = 0;
         public short MaxCycles = 0;
@@ -214,7 +228,11 @@ public class Animator : IFile
             Name = reader.ReadStringTableEntry();
             Type = reader.Read<StateType>();
             TransitImmediately = reader.Read<byte>() == 1;
-            Flags = reader.Read<byte>();
+            byte Flags = reader.Read<byte>();
+            Loops = (Flags & (byte)Flag.Loops) != 0;
+            Unk1 = (Flags & (byte)Flag.Unk1) != 0;
+            Unk2 = (Flags & (byte)Flag.Unk2) != 0;
+            Unk3 = (Flags & (byte)Flag.Unk3) != 0;
             DefaultLayerIndex = reader.Read<byte>();
             RootBlendNodeOrClipIndex = reader.Read<short>();
             MaxCycles = reader.Read<short>();
@@ -234,7 +252,12 @@ public class Animator : IFile
             writer.WriteStringTableEntry(Name);
             writer.Write(Type);
             writer.Write(TransitImmediately ? (byte)1 : (byte)0);
-            writer.Write(Flags);
+            byte flags = 0;
+            if (Loops) flags |= (byte)Flag.Loops;
+            if (Unk1) flags |= (byte)Flag.Unk1;
+            if (Unk2) flags |= (byte)Flag.Unk2;
+            if (Unk3) flags |= (byte)Flag.Unk3;
+            writer.Write(flags);
             writer.Write(DefaultLayerIndex);
             writer.Write(RootBlendNodeOrClipIndex);
             writer.Write(MaxCycles);
@@ -363,7 +386,7 @@ public class Animator : IFile
     public class Layer : IBINASerializable
     {
         public string Name = "";
-        public ushort LayerID = 0;
+        public short LayerID = 0;
         public short BlendMaskIndex = 0;
 
         public Layer() { }
@@ -371,7 +394,7 @@ public class Animator : IFile
         public void Read(BINAReader reader)
         {
             Name = reader.ReadStringTableEntry();
-            LayerID = reader.Read<ushort>();
+            LayerID = reader.Read<short>();
             BlendMaskIndex = reader.Read<short>();
             reader.Align(8);
         }
@@ -431,7 +454,7 @@ public class Animator : IFile
         public TriggerType Type = TriggerType.Hit;
         public float Unk0 = 0;
         public float Unk1 = 0;
-        public ushort TriggerTypeIndex = 0;
+        public short TriggerTypeIndex = 0;
         public short ColliderIndex = 0;
         public string Name = "";
 
@@ -443,7 +466,7 @@ public class Animator : IFile
             reader.Align(4);
             Unk0 = reader.Read<float>();
             Unk1 = reader.Read<float>();
-            TriggerTypeIndex = reader.Read<ushort>();
+            TriggerTypeIndex = reader.Read<short>();
             ColliderIndex = reader.Read<short>();
             Name = reader.ReadStringTableEntry();
         }
@@ -564,7 +587,6 @@ public class Animator : IFile
     {
         public TransitionInfo Info = new();
         public short TransitionTimeVariableIndex = 0;
-
 
         public void Read(BINAReader reader)
         {
