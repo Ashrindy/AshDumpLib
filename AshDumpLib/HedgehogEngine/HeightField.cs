@@ -20,6 +20,7 @@ public class HeightField : IFile
     public HeightField() { }
 
     public HeightField(string filename) => Open(filename);
+    public HeightField(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

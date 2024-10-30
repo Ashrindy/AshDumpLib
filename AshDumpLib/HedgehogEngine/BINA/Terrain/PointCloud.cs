@@ -15,6 +15,7 @@ public class PointCloud : IFile
     public PointCloud() { }
 
     public PointCloud(string filename) => Open(filename);
+    public PointCloud(string filename, byte[] data) => Open(filename, data);
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
     public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }

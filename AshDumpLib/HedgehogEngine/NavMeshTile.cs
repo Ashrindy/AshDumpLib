@@ -14,6 +14,7 @@ public class NavMeshTile : IFile
     public NavMeshTile() { }
 
     public NavMeshTile(string filename) => Open(filename);
+    public NavMeshTile(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

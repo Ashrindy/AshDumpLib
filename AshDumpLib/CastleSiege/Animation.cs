@@ -17,8 +17,8 @@ public class Animation : IFile
     public Label EndLabel = new();
 
     public Animation() { }
-
     public Animation(string filename) => Open(filename);
+    public Animation(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

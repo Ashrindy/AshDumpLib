@@ -17,6 +17,7 @@ public class NeedleShader : IFile
     public NeedleShader() { }
 
     public NeedleShader(string filename) => Open(filename);
+    public NeedleShader(string filename, byte[] data) => Open(filename, data);
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
 
     public override void Read(ExtendedBinaryReader reader)

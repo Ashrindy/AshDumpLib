@@ -12,6 +12,7 @@ public class AIStateMachine : IFile
     public AIStateMachine() { }
 
     public AIStateMachine(string filename) => Open(filename);
+    public AIStateMachine(string filename, byte[] data) => Open(filename, data);
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
     public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }

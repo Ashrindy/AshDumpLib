@@ -10,8 +10,8 @@ public class Archive : AshDumpLib.Helpers.Archives.Archive
     public const string Signature = "Resource File V1.1";
 
     public Archive() { }
-
     public Archive(string filename) => Open(filename);
+    public Archive(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

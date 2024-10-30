@@ -17,6 +17,7 @@ public class UVAnimation : IFile
     public UVAnimation() { }
 
     public UVAnimation(string filename) => Open(filename);
+    public UVAnimation(string filename, byte[] data) => Open(filename, data);
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big));
     public override void WriteBuffer() { MemoryStream memStream = new MemoryStream(); Write(new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Big)); Data = memStream.ToArray(); }

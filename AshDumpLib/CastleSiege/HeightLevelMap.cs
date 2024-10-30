@@ -11,6 +11,7 @@ public class HeightLevelMap : IFile
 
     public HeightLevelMap() { }
     public HeightLevelMap(string filepath) => Open(filepath);
+    public HeightLevelMap(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

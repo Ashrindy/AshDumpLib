@@ -316,6 +316,7 @@ public class PAC : Archive
     public PAC() { }
 
     public PAC(string filepath) => Open(filepath);
+    public PAC(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

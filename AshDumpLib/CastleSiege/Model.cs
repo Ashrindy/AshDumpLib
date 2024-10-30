@@ -16,6 +16,7 @@ public class Model : IFile
     public Model() { }
 
     public Model(string filename) => Open(filename);
+    public Model(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

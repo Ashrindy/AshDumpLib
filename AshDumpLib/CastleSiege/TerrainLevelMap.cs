@@ -10,6 +10,7 @@ public class TerrainLevelMap : IFile
 
     public TerrainLevelMap() { }
     public TerrainLevelMap(string filepath) => Open(filepath);
+    public TerrainLevelMap(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

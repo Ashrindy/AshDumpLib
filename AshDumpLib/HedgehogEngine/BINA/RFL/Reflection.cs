@@ -785,14 +785,16 @@ public class Reflection : IFile
     public static string TemplateFilePath = "frontiers.rfl.json";
     public string RFLName = "PhotoModeParameters";
 
-    public ReflectionData Parameters;
+    public ReflectionData Parameters = new();
 
     public int FileVersion = 1;
 
     public Reflection() { }
 
     public Reflection(string filename) => Open(filename);
+    public Reflection(string filename, byte[] data) => Open(filename, data);
     public Reflection(string filename, string templateFilePath = "frontiers.rfl.json", string rflName = "PhotoModeParameters") { TemplateFilePath = templateFilePath; Parameters = new(TemplateFilePath); RFLName = rflName; Open(filename); }
+    public Reflection(string filename, byte[] data, string templateFilePath = "frontiers.rfl.json", string rflName = "PhotoModeParameters") { TemplateFilePath = templateFilePath; Parameters = new(TemplateFilePath); RFLName = rflName; Open(filename, data); }
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
     public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }

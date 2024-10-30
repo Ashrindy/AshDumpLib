@@ -16,6 +16,7 @@ public class NTSP : IFile
     public NTSP() { }
 
     public NTSP(string filename) => Open(filename);
+    public NTSP(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {
@@ -93,6 +94,7 @@ public class NTSP : IFile
         public NTSI() { }
 
         public NTSI(string filename) => Open(filename);
+        public NTSI(string filename, byte[] data) => Open(filename, data);
 
         public override void Read(ExtendedBinaryReader reader)
         {

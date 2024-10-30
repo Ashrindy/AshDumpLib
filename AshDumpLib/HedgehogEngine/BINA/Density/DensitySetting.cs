@@ -35,6 +35,7 @@ public class DensitySetting : IFile
     public DensitySetting() { }
 
     public DensitySetting(string filename) => Open(filename);
+    public DensitySetting(string filename, byte[] data) => Open(filename, data);
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
 

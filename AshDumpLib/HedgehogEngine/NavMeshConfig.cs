@@ -16,6 +16,7 @@ public class NavMeshConfig : IFile
     public NavMeshConfig() { }
 
     public NavMeshConfig(string filename) => Open(filename);
+    public NavMeshConfig(string filename, byte[] data) => Open(filename, data);
 
     public override void Read(ExtendedBinaryReader reader)
     {

@@ -20,7 +20,9 @@ public class ObjectWorld : IFile
     public ObjectWorld() { }
 
     public ObjectWorld(string filename) => Open(filename);
+    public ObjectWorld(string filename, byte[] data) => Open(filename, data);
     public ObjectWorld(string filename, string templateFilePath = "frontiers.json") { TemplateFilePath = templateFilePath; TemplateData = ReflectionData.Template.GetTemplateFromFilePath(templateFilePath); Open(filename); }
+    public ObjectWorld(string filename, byte[] data, string templateFilePath = "frontiers.json") { TemplateFilePath = templateFilePath; TemplateData = ReflectionData.Template.GetTemplateFromFilePath(templateFilePath); Open(filename, data); }
 
     public override void ReadBuffer() => Read(new(new MemoryStream(Data), Amicitia.IO.Streams.StreamOwnership.Retain, endianness));
     public override void WriteBuffer() { MemoryStream memStream = new(); BINAWriter writer = new(memStream, Amicitia.IO.Streams.StreamOwnership.Retain, endianness); Write(writer); Data = memStream.ToArray(); }
