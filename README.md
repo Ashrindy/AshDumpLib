@@ -12,6 +12,8 @@ A library with simple reading and writing function for various file formats in v
 
 - AshDumpLibTest - A testing sandbox for the C# library.
 
+- AshDumpTool - A tool for the file formats in the C# library.
+
 ## 🗃 Dependencies 🗃
 
 |                                                     Name                                                      |                            Use                            |
