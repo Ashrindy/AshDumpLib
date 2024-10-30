@@ -1,7 +1,5 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using Amicitia.IO.Binary;
-using System.Reflection.PortableExecutable;
-using System.Xml.Linq;
 
 namespace AshDumpLib.HedgehogEngine.BINA.Misc;
 public class ShaderList : IFile

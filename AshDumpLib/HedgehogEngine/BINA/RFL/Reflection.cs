@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using System.Numerics;
 using Amicitia.IO.Binary;
 
-using static AshDumpLib.HedgehogEngine.MathA;
+using static AshDumpLib.Helpers.MathA;
 using static AshDumpLib.HedgehogEngine.BINA.RFL.ReflectionData.Template;
 using System.Collections;
 using System.Runtime.InteropServices;

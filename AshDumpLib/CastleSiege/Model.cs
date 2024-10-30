@@ -24,7 +24,7 @@ public class Model : IFile
         int numMaterials;
 
         Version = reader.Read<int>();
-        FileName = Helpers.CastleStrikeString(reader) + "\0rdo";
+        FileName = Helpers.CastleStrikeString(reader) + ".rdo";
         FilePath = Helpers.CastleStrikeString(reader);
         amount = reader.Read<int>();
         boneAmount = reader.Read<int>();
@@ -66,8 +66,8 @@ public class Model : IFile
     public override void Write(ExtendedBinaryWriter writer)
     {
         writer.Write(Version);
-        writer.WriteString(StringBinaryFormat.FixedLength, FileName, 256);
-        writer.WriteString(StringBinaryFormat.FixedLength, FilePath, 256);
+        writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, FileName, 256);
+        writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, FilePath, 256);
         writer.Write(Meshes.Count);
         writer.Write(Bones.Count);
         writer.Write(Materials.Count);
@@ -179,7 +179,7 @@ public class Model : IFile
         public void Write(ExtendedBinaryWriter writer)
         {
             writer.Write(MeshVersion);
-            writer.WriteString(StringBinaryFormat.FixedLength, MeshName, 256);
+            writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, MeshName, 256);
             writer.Write(Pivot);
             writer.Write(Position);
             writer.Write(Rotation);
@@ -257,7 +257,7 @@ public class Model : IFile
 
         public void Write(ExtendedBinaryWriter writer)
         {
-            writer.WriteString(StringBinaryFormat.FixedLength, Name, 256);
+            writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, Name, 256);
             writer.Write(Position);
             writer.Write(IndexOfChild.Length);
             if (BoneWeights.Length > 0)
@@ -316,14 +316,14 @@ public class Model : IFile
 
         public void Write(ExtendedBinaryWriter writer)
         {
-            writer.WriteString(StringBinaryFormat.FixedLength, Name, 256);
+            writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, Name, 256);
             writer.Write(Ambient);
             writer.Write(Diffuse);
             writer.Write(Specular);
             writer.Write(Transparency);
             writer.Write(UVTilling);
             writer.Write(UVOffset);
-            writer.WriteString(StringBinaryFormat.FixedLength, TextureName, 256);
+            writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, TextureName, 256);
             writer.Write(0);
         }
 

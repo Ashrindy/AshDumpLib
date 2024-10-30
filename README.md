@@ -22,11 +22,14 @@ A library with simple reading and writing function for various file formats in v
 
 ### Castle Siege
 
-|                      |              **Castle Siege**              |             |
-| :------------------: | :----------------------------------------: | :---------: |
-| **File format name** |                  **Info**                  | **Credits** |
-|    RDA (Archive)     | For easy reading and writing of .rda files |             |
-|  RDO (Model/Object)  | For easy reading and writing of .rdo files |             |
+|                       |              **Castle Siege**              |             |
+| :-------------------: | :----------------------------------------: | :---------: |
+| **File format name**  |                  **Info**                  | **Credits** |
+|     RDA (Archive)     | For easy reading and writing of .rda files |             |
+|  RDO (Model/Object)   | For easy reading and writing of .rdo files |             |
+|    RDM (Animation)    | For easy reading and writing of .rdm files |             |
+| HLM (HeightLevelMap)  | For easy reading and writing of .hlm files |             |
+| TLM (TerrainLevelMap) | For easy reading and writing of .tlm files |             |
 
 ### Hedgehog Engine 1/2
 
@@ -54,5 +57,7 @@ A library with simple reading and writing function for various file formats in v
 |    NavMeshConfig     |                                                                   For easy reading and writing of .nmc files                                                                   |                                                                                  |
 |     NavMeshTile      |                                                    For easy reading of .nmt files, though there's really nothing much known                                                    |                                                                                  |
 |     NeedleShader     |                                         For easy reading of .cso, .pso and .vso files, though the shader data part is still unfinished                                         |                                                                                  |
+|    NeedleArchive     |                                                            For easy reading and writing of .model (with lods) files                                                            |                      Used HedgeNeedle's output as reference                      |
 |   ParticleLocator    |                                              For easy reading and writing of .effdb files, though a few values are still unknown                                               |                                                                                  |
 |    AIStateMachine    |                                               For easy reading and writing of .aism files, though a few values are still unknown                                               |                                                                                  |
+|         NTSP         |                                                                        For easy reading of .ntsp files                                                                         |                      Some info taken from Skyth's NtspMaker                      |

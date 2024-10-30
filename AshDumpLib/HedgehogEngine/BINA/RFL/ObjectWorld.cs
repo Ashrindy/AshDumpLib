@@ -1,9 +1,7 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using Amicitia.IO.Binary;
 using System.Numerics;
-using Newtonsoft.Json;
 using libHSON;
-using System.Xml.Linq;
 
 namespace AshDumpLib.HedgehogEngine.BINA.RFL;
 

@@ -1,6 +1,5 @@
 ﻿using Amicitia.IO.Binary;
 using AshDumpLib.Helpers.Archives;
-using System.Reflection.PortableExecutable;
 
 namespace AshDumpLib.HedgehogEngine.BINA.Misc;
 
@@ -9,6 +8,8 @@ public class Text : IFile
     public const string FileExtension = ".cnvrs-text";
 
     public string Language = "en";
+    public byte unk0 = 6;
+    public byte unk1 = 1;
     public List<Entry> Entries = new();
 
     public Text() { }
@@ -43,7 +44,8 @@ public class Text : IFile
     public void Write(BINAWriter writer)
     {
         writer.WriteHeader();
-        writer.Write((short)0);
+        writer.Write(unk0);
+        writer.Write(unk1);
         writer.Write((byte)Entries.Count);
         writer.Align(8);
         writer.AddOffset("dataOffset");
@@ -53,6 +55,26 @@ public class Text : IFile
 
         foreach (var i in Entries)
             i.Write(writer);
+
+        foreach(var i in Entries)
+        {
+            writer.SetOffset(i.Key + i.Text + i.Text.Length);
+            byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
+            writer.WriteArray(textbytes);
+            writer.Align(8);
+        }
+
+        foreach(var i in Entries)
+        {
+            writer.SetOffset(i.Key + i.Text + i.Font.FontName);
+            i.Font.entryName = i.Key;
+            i.Font.Write(writer);
+        }
+
+        foreach(var i in Entries)
+        {
+            
+        }
 
         foreach (var i in Entries)
             i.FinishWrite(writer);
@@ -78,12 +100,8 @@ public class Text : IFile
             long textLength = reader.Read<long>();
             reader.ReadAtOffset(textPtr + 64, () =>
             {
-                for (int i = 0; i < textLength; i++)
-                {
-                    Text += reader.ReadString(StringBinaryFormat.FixedLength, 1);
-                    reader.Skip(1);
-                }
-
+                byte[] textbytes = reader.ReadArray<byte>((int)textLength * 2);
+                Text = System.Text.Encoding.Unicode.GetString(textbytes);
             });
             long characterPtr = reader.Read<long>();
             if (characterPtr != 0)
@@ -117,21 +135,12 @@ public class Text : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
-            writer.SetOffset(Key + Text + Text.Length);
-            foreach (var i in Text.ToArray())
-            {
-                writer.Write((byte)i);
-                writer.WriteNulls(1);
-            }
-            writer.SetOffset(Key + Text + Font.FontName);
-            Font.entryName = Key;
-            Font.Write(writer);
             writer.SetOffset(Key + Text + Characters.Count);
             writer.Write((long)Characters.Count);
             writer.AddOffset(Key + Text + Characters.Count + "data");
             writer.SetOffset(Key + Text + Characters.Count + "data");
-            foreach (var i in Characters)
-                writer.AddOffset(Key + Text + Characters.Count + "data" + i.Name + i.Type);
+            foreach (var x in Characters)
+                writer.AddOffset(Key + Text + Characters.Count + "data" + x.Name + x.Type);
             foreach (var i in Characters)
             {
                 writer.SetOffset(Key + Text + Characters.Count + "data" + i.Name + i.Type);
@@ -187,6 +196,8 @@ public class Text : IFile
         public float fUnk = 512;
         public float fUnk1 = 128;
         public int[] iUnks = new int[8];
+
+        long ID = Random.Shared.NextInt64();
 
         public void Read(BINAReader reader)
         {
@@ -260,67 +271,72 @@ public class Text : IFile
         public void Write(BINAWriter writer)
         {
             writer.WriteStringTableEntry(entryName);
-            writer.AddOffset(entryName + FontName + FontName2);
-            writer.AddOffset(entryName + FontName + FontName2 + LayoutName);
-            writer.WriteNulls(8);
-
-            writer.SetOffset(entryName + FontName + FontName2);
-            writer.WriteStringTableEntry(FontName);
-            writer.WriteStringTableEntry(FontName2);
-
-            writer.AddOffset(entryName + FontName + FontName2 + "0");
-            writer.AddOffset(entryName + FontName + FontName2 + "1");
-            writer.AddOffset(entryName + FontName + FontName2 + "2");
-            writer.AddOffset(entryName + FontName + FontName2 + "3");
-            writer.AddOffset(entryName + FontName + FontName2 + "4");
-            writer.AddOffset(entryName + FontName + FontName2 + "5");
-            writer.AddOffset(entryName + FontName + FontName2 + "6");
-
-            writer.SetOffset(entryName + FontName + FontName2 + "0");
-            writer.Write(FontSize);
-            writer.Align(8);
-            writer.SetOffset(entryName + FontName + FontName2 + "1");
-            writer.Write(unk);
-            writer.Align(8);
-            writer.SetOffset(entryName + FontName + FontName2 + "2");
-            writer.Write(FontPadding);
-            writer.Align(8);
-            writer.SetOffset(entryName + FontName + FontName2 + "3");
-            writer.Write(unk2);
-            writer.Align(8);
-            writer.SetOffset(entryName + FontName + FontName2 + "4");
-            writer.Write(unkEnum);
-            writer.Align(8);
-            writer.SetOffset(entryName + FontName + FontName2 + "5");
-            writer.Write(unk3);
-            writer.Align(8);
-            writer.SetOffset(entryName + FontName + FontName2 + "6");
-            writer.Write(unk4);
-            writer.Align(8);
-
-            writer.SetOffset(entryName + FontName + FontName2 + LayoutName);
-            writer.WriteStringTableEntry(LayoutName);
-            for (int i = 0; i < 10; i++)
-                writer.AddOffset(entryName + FontName + FontName2 + LayoutName + i.ToString());
-            for (int i = 0; i < 10; i++)
+            if (LayoutName != "")
             {
-                writer.SetOffset(entryName + FontName + FontName2 + LayoutName + i.ToString());
-                switch (i)
-                {
-                    case 0:
-                        writer.Write(fUnk);
-                        break;
+                writer.AddOffset(entryName + FontName + FontName2 + "one" + ID);
+                writer.AddOffset(entryName + FontName + FontName2 + LayoutName + "two" + ID);
+                writer.WriteNulls(8);
 
-                    case 1:
-                        writer.Write(fUnk1);
-                        break;
+                writer.SetOffset(entryName + FontName + FontName2 + "one" + ID);
+                writer.WriteStringTableEntry(FontName);
+                writer.WriteStringTableEntry(FontName2);
 
-                    default:
-                        writer.Write(iUnks[i - 2]);
-                        break;
-                }
+                writer.AddOffset(entryName + FontName + FontName2 + "0" + ID);
+                writer.AddOffset(entryName + FontName + FontName2 + "1" + ID);
+                writer.AddOffset(entryName + FontName + FontName2 + "2" + ID);
+                writer.AddOffset(entryName + FontName + FontName2 + "3" + ID);
+                writer.AddOffset(entryName + FontName + FontName2 + "4" + ID);
+                writer.AddOffset(entryName + FontName + FontName2 + "5" + ID);
+                writer.AddOffset(entryName + FontName + FontName2 + "6" + ID);
+
+                writer.SetOffset(entryName + FontName + FontName2 + "0" + ID);
+                writer.Write(FontSize);
                 writer.Align(8);
+                writer.SetOffset(entryName + FontName + FontName2 + "1" + ID);
+                writer.Write(unk);
+                writer.Align(8);
+                writer.SetOffset(entryName + FontName + FontName2 + "2" + ID);
+                writer.Write(FontPadding);
+                writer.Align(8);
+                writer.SetOffset(entryName + FontName + FontName2 + "3" + ID);
+                writer.Write(unk2);
+                writer.Align(8);
+                writer.SetOffset(entryName + FontName + FontName2 + "4" + ID);
+                writer.Write(unkEnum);
+                writer.Align(8);
+                writer.SetOffset(entryName + FontName + FontName2 + "5" + ID);
+                writer.Write(unk3);
+                writer.Align(8);
+                writer.SetOffset(entryName + FontName + FontName2 + "6" + ID);
+                writer.Write(unk4);
+                writer.Align(8);
+
+                writer.SetOffset(entryName + FontName + FontName2 + LayoutName + "two" + ID);
+                writer.WriteStringTableEntry(LayoutName);
+                for (int i = 0; i < 10; i++)
+                    writer.AddOffset(entryName + FontName + FontName2 + LayoutName + "three" + i.ToString() + ID);
+                for (int i = 0; i < 10; i++)
+                {
+                    writer.SetOffset(entryName + FontName + FontName2 + LayoutName + "three" + i.ToString() + ID);
+                    switch (i)
+                    {
+                        case 0:
+                            writer.Write(fUnk);
+                            break;
+
+                        case 1:
+                            writer.Write(fUnk1);
+                            break;
+
+                        default:
+                            writer.Write(iUnks[i - 2]);
+                            break;
+                    }
+                    writer.Align(8);
+                }
             }
+            else
+                writer.WriteNulls(24);
         }
 
         public void FinishWrite(BINAWriter writer)

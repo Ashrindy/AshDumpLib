@@ -2,39 +2,6 @@
 
 namespace AshDumpLib.HedgehogEngine;
 
-public static class MathA
-{
-    public struct Matrix3x4
-    {
-        public float[,] matrix;
-
-        public Matrix3x4(float[,] initialValues)
-        {
-            if (initialValues.GetLength(0) != 3 || initialValues.GetLength(1) != 4)
-            {
-                throw new ArgumentException("Initial values must be a 3x4 matrix.");
-            }
-            matrix = initialValues;
-        }
-    }
-
-    public struct Color8
-    {
-        public byte r;
-        public byte g;
-        public byte b;
-        public byte a;
-    }
-
-    public struct ColorF
-    {
-        public float r;
-        public float g;
-        public float b;
-        public float a;
-    }
-}
-
 public static class Helpers
 {
     public static Vector3 ToEulerAngles(Quaternion q)

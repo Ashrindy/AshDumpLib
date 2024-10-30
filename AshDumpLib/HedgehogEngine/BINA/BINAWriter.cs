@@ -168,15 +168,32 @@ public class BINAWriter : ExtendedBinaryWriter
 
         //Now we write all the offsets
         //Here we save the last offset position, because the BINA offsets are based on the spaces between offsets
-        long lastOffsetPos = 0;
 
         //We loop through them, convert them into binary, and write them
-        foreach(var i in Offsets)
+        long lastOffsetPos = 0;
+        foreach (var i in Offsets)
         {
-            int x = ((int)i.Value - (int)lastOffsetPos) >> 2;
-            if(x <= 63)
-                Write((byte)((byte)64 | x));
-            lastOffsetPos = i.Value;
+                int difference = (int)(i.Value - lastOffsetPos) >> 2;
+                if (difference <= 0x3F)
+                {
+                    int x = difference & 0x3F;
+                    Write((byte)((byte)64 | x));
+                }
+                else if (difference <= 0x3FFF)
+                {
+                    int x = difference & 0x3FFF;
+                    Write((byte)((byte)128 | (x >> 8)));
+                    Write((byte)(x & 0xFF));
+                }
+                else if (difference <= 0x3FFFFFFF)
+                {
+                    int x = difference & 0x3FFFFFFF;
+                    Write((byte)((byte)192 | (x >> 24)));
+                    Write((byte)((x >> 16) & 0xFF));
+                    Write((byte)((x >> 8) & 0xFF));
+                    Write((byte)(x & 0xFF));
+                }
+                lastOffsetPos = i.Value;
         }
 
         FixPadding(4);

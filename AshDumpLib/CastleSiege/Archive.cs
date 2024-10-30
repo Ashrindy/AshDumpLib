@@ -33,6 +33,24 @@ public class Archive : AshDumpLib.Helpers.Archives.Archive
                         AddFile(model);
                         break;
 
+                    case "rdm":
+                        Animation anim = new();
+                        anim.Open(tempFile.FilePath, tempFile.Data.ToArray());
+                        AddFile(anim);
+                        break;
+
+                    case "hlm":
+                        HeightLevelMap hlm = new();
+                        hlm.Open(tempFile.FilePath, tempFile.Data.ToArray());
+                        AddFile(hlm);
+                        break;
+
+                    case "tlm":
+                        TerrainLevelMap tlm = new();
+                        tlm.Open(tempFile.FilePath, tempFile.Data.ToArray());
+                        AddFile(tlm);
+                        break;
+
                     default:
                         AddFile(tempFile.FilePath, tempFile.Data.ToArray());
                         break;
@@ -47,7 +65,7 @@ public class Archive : AshDumpLib.Helpers.Archives.Archive
 
     public override void Write(ExtendedBinaryWriter writer)
     {
-        writer.WriteString(StringBinaryFormat.FixedLength, Signature, 256);
+        writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, Signature, 256);
         writer.Write(Files.Count);
         List<File> files = new();
         foreach(var i in Files)
@@ -108,7 +126,7 @@ public class Archive : AshDumpLib.Helpers.Archives.Archive
 
         public void Write(ExtendedBinaryWriter writer)
         {
-            writer.WriteString(StringBinaryFormat.FixedLength, FilePath, 256);
+            writer.WriteString(System.Text.Encoding.Latin1, StringBinaryFormat.FixedLength, FilePath, 256);
             pointerPos = writer.Position;
             writer.Skip(4);
 

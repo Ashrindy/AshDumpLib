@@ -8,6 +8,8 @@ using AshDumpLib.HedgehogEngine.BINA.Animation;
 using AshDumpLib.HedgehogEngine.BINA.Terrain;
 using AshDumpLib.HedgehogEngine.BINA.Misc;
 using AshDumpLib.HedgehogEngine.Archives;
+using AshDumpLib.HedgehogEngine;
+using AshDumpLib.CastleSiege;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
@@ -53,21 +55,31 @@ string filepath = Console.ReadLine();
 //NeedleShader needleShader = new(filepath);
 //Animator asm = new(filepath);
 //asm.SaveToFile(filepath + "1");
-foreach(var i in Directory.GetFiles(filepath))
-{
-    PAC pAC = new();
-    pAC.parseFiles = false;
-    pAC.Open(i);
-    if(pAC.Files.Where(x => x.Extension == "cam-anim").Count() > 0)
-        foreach(var l in pAC.Files.Where(x => x.Extension == "cam-anim"))
-        {
-            CameraAnimation camanim = new();
-            camanim.Open(l.FileName, l.Data);
-            foreach(var m in camanim.Cameras)
-                if(m.AspectRatio > 1.79 || m.AspectRatio < 1.76)
-                    Console.WriteLine($"{i}\\{l.FileName}: {m.Name} - bad aspect ratio");
-        }
-}
+//foreach(var i in Directory.GetFiles(filepath))
+//{
+//    PAC pAC = new();
+//    pAC.parseFiles = false;
+//    pAC.Open(i);
+//    if(pAC.Files.Where(x => x.Extension == "cam-anim").Count() > 0)
+//        foreach(var l in pAC.Files.Where(x => x.Extension == "cam-anim"))
+//        {
+//            CameraAnimation camanim = new();
+//            camanim.Open(l.FileName, l.Data);
+//            foreach(var m in camanim.Cameras)
+//                if(m.AspectRatio > 1.79 || m.AspectRatio < 1.76)
+//                    Console.WriteLine($"{i}\\{l.FileName}: {m.Name} - bad aspect ratio");
+//        }
+//}
+
+//Text ogText = new(filepath);
+//string filepath2 = Console.ReadLine();
+//Text newText = new(filepath2);
+//for(int i = 0; i < ogText.Entries.Count; i++)
+//{
+//    ogText.Entries[i].Text = newText.Entries[i].Text;
+//}
+
+//ogText.SaveToFile(filepath2);
 
 //pAC.parseFiles = false;
 //pAC.SaveToFile(filepath + "test.pac");

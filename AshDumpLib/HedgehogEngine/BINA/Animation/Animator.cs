@@ -2,7 +2,6 @@
 using Amicitia.IO.Binary;
 using System.Drawing;
 using System.Numerics;
-using System;
 
 namespace AshDumpLib.HedgehogEngine.BINA.Animation;
 
