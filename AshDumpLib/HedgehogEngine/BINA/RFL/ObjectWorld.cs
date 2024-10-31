@@ -337,6 +337,16 @@ public class ObjectWorld : IFile
 
     #region HSON
 
+    public string ToHsonString(System.Text.Json.JsonWriterOptions options = default)
+    {
+        MemoryStream memStream = new();
+        System.Text.Json.Utf8JsonWriter teswrti = new(memStream, options);
+        Project project = ToHson();
+        project.Write(teswrti);
+        teswrti.Dispose();
+        return System.Text.Encoding.UTF8.GetString(memStream.ToArray());
+    }
+
     #region ToHson
     public Project ToHson()
     {

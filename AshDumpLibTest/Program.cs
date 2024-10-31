@@ -7,9 +7,6 @@ using AshDumpLib.HedgehogEngine.BINA.RFL;
 using AshDumpLib.HedgehogEngine.BINA.Animation;
 using AshDumpLib.HedgehogEngine.BINA.Terrain;
 using AshDumpLib.HedgehogEngine.BINA.Misc;
-using AshDumpLib.HedgehogEngine.Archives;
-using AshDumpLib.HedgehogEngine;
-using AshDumpLib.CastleSiege;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();

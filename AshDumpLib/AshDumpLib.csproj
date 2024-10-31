@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<Configurations>Debug;Release;ReleasePACLess-CastleSiegeLess</Configurations>
@@ -20,6 +20,9 @@
 		<Compile Remove="CastleSiege\Archive.cs" />
 		<Compile Remove="CastleSiege\Helpers.cs" />
 		<Compile Remove="CastleSiege\Model.cs" />
+		<Compile Remove="CastleSiege\Animation.cs" />
+		<Compile Remove="CastleSiege\HeightLevelMap.cs" />
+		<Compile Remove="CastleSiege\TerrainLevelMap.cs" />
 		<Compile Remove="HedgehogEngine\Archives\PAC.cs" />
 	</ItemGroup>
 
