@@ -23,8 +23,8 @@ public class Text : IFile
     public void Read(BINAReader reader)
     {
         reader.ReadHeader();
-        byte unk0 = reader.Read<byte>();
-        byte unk1 = reader.Read<byte>();
+        unk0 = reader.Read<byte>();
+        unk1 = reader.Read<byte>();
         int amount = reader.Read<byte>();
         reader.Align(8);
         long dataOffset = reader.Read<long>();

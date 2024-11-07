@@ -87,4 +87,7 @@ string filepath = Console.ReadLine();
 //Probe probe = new(filepath);
 //probe.SaveToFile(filepath + "1");
 
+PhysicalSkeleton physSkl = new(filepath);
+physSkl.SaveToFile(filepath + ".pba");
+
 Console.WriteLine("test");

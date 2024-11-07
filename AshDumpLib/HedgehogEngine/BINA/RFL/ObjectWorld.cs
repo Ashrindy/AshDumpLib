@@ -344,7 +344,15 @@ public class ObjectWorld : IFile
         Project project = ToHson();
         project.Write(teswrti);
         teswrti.Dispose();
-        return System.Text.Encoding.UTF8.GetString(memStream.ToArray());
+        string value = System.Text.Encoding.UTF8.GetString(memStream.ToArray());
+        memStream.Dispose();
+        memStream.Close();
+        return value;
+    }
+
+    public libHSON.Project FromHsonString(string value)
+    {
+        return libHSON.Project.FromData(System.Text.Encoding.UTF8.GetBytes(value));
     }
 
     #region ToHson
