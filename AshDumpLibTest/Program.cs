@@ -7,6 +7,11 @@ using AshDumpLib.HedgehogEngine.BINA.RFL;
 using AshDumpLib.HedgehogEngine.BINA.Animation;
 using AshDumpLib.HedgehogEngine.BINA.Terrain;
 using AshDumpLib.HedgehogEngine.BINA.Misc;
+using AshDumpLib.HedgehogEngine.Archives;
+using AshDumpLib.Helpers.Archives;
+using AshDumpLibTest;
+using System;
+using AshDumpLib.HedgehogEngine.BINA.Converse;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
@@ -52,21 +57,21 @@ string filepath = Console.ReadLine();
 //NeedleShader needleShader = new(filepath);
 //Animator asm = new(filepath);
 //asm.SaveToFile(filepath + "1");
-//foreach(var i in Directory.GetFiles(filepath))
-//{
-//    PAC pAC = new();
-//    pAC.parseFiles = false;
-//    pAC.Open(i);
-//    if(pAC.Files.Where(x => x.Extension == "cam-anim").Count() > 0)
-//        foreach(var l in pAC.Files.Where(x => x.Extension == "cam-anim"))
-//        {
-//            CameraAnimation camanim = new();
-//            camanim.Open(l.FileName, l.Data);
-//            foreach(var m in camanim.Cameras)
-//                if(m.AspectRatio > 1.79 || m.AspectRatio < 1.76)
-//                    Console.WriteLine($"{i}\\{l.FileName}: {m.Name} - bad aspect ratio");
-//        }
-//}
+/*foreach(var i in Directory.GetFiles(filepath))
+{
+    PAC pAC = new();
+    pAC.parseFiles = false;
+    pAC.Open(i);
+    if(pAC.Files.Where(x => x.Extension == "cam-anim").Count() > 0)
+        foreach(var l in pAC.Files.Where(x => x.Extension == "cam-anim"))
+        {
+            CameraAnimation camanim = new();
+            camanim.Open(l.FileName, l.Data);
+            foreach(var m in camanim.Cameras)
+                if(m.AspectRatio > 1.79 || m.AspectRatio < 1.76)
+                    Console.WriteLine($"{i}\\{l.FileName}: {m.Name} - bad aspect ratio {m.AspectRatio}");
+        }
+}*/
 
 //Text ogText = new(filepath);
 //string filepath2 = Console.ReadLine();
@@ -87,7 +92,22 @@ string filepath = Console.ReadLine();
 //Probe probe = new(filepath);
 //probe.SaveToFile(filepath + "1");
 
-PhysicalSkeleton physSkl = new(filepath);
-physSkl.SaveToFile(filepath + ".pba");
+//PAC pac = new(filepath);
+//pac.SaveToFile(filepath + ".pac");
+//PAC pac2 = new(filepath + ".pac");
+
+//List<IFile> missingFiles = new();
+
+//var comparer = new IFileComparer();
+//missingFiles = pac.Files.Except(pac2.Files, comparer).ToList();
+
+/*TextMeta meta = new(filepath);
+meta.SaveToFile(filepath + ".cnvrs-meta");*/
+
+/*TextProject proj = new(filepath);
+proj.SaveToFile(filepath + ".cnvrs-proj");*/
+
+Text txt = new(filepath);
+txt.SaveToFile(filepath + ".cnvrs-text");
 
 Console.WriteLine("test");

@@ -124,12 +124,20 @@ public class BINAReader : ExtendedBinaryReader
         return list;
     }
 
-    public List<T> ReadBINAArrayStruct64<T>() where T : IBINASerializable, new()
+    public List<T> ReadBINAArrayStruct64<T>(bool offsetFirst = true) where T : IBINASerializable, new()
     {
+        long offset = 0;
+        long count = 0;
         List<T> list = new();
-        long offset = Read<long>();
+        if (offsetFirst)
+            offset = Read<long>();
+        else
+            count = Read<long>();
         this.Align(8);
-        long count = Read<long>();
+        if (!offsetFirst)
+            offset = Read<long>();
+        else
+            count = Read<long>();
         ReadAtOffset(offset + 64, () =>
         {
             for (int i = 0; i < count; i++)
@@ -162,6 +170,21 @@ public class BINAReader : ExtendedBinaryReader
     {
         List<string> list = new();
         long count = Read<int>();
+        this.Align(8);
+        long offset = Read<long>();
+        ReadAtOffset(offset + 64, () =>
+        {
+            for (int i = 0; i < count; i++)
+                list.Add(ReadStringTableEntry());
+        }
+        );
+        return list;
+    }
+
+    public List<string> ReadBINAStringArray64()
+    {
+        List<string> list = new();
+        long count = Read<long>();
         this.Align(8);
         long offset = Read<long>();
         ReadAtOffset(offset + 64, () =>

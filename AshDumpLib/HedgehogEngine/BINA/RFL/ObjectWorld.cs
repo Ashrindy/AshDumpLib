@@ -350,7 +350,7 @@ public class ObjectWorld : IFile
         return value;
     }
 
-    public libHSON.Project FromHsonString(string value)
+    public static libHSON.Project FromHsonString(string value)
     {
         return libHSON.Project.FromData(System.Text.Encoding.UTF8.GetBytes(value));
     }
@@ -621,10 +621,19 @@ public class ObjectWorld : IFile
                 break;
 
             case ParameterType.Array:
-                if (param.Item2.ValueArray.Where(x => x.ValueFloatingPoint != null).Count() == 3)
-                    value = new Vector3((float)param.Item2.ValueArray[0].ValueFloatingPoint, (float)param.Item2.ValueArray[1].ValueFloatingPoint, (float)param.Item2.ValueArray[2].ValueFloatingPoint);
-                else if (param.Item2.ValueArray.Where(x => x.ValueFloatingPoint != null).Count() == 2)
-                    value = new Vector2((float)param.Item2.ValueArray[0].ValueFloatingPoint, (float)param.Item2.ValueArray[1].ValueFloatingPoint);
+                if (param.Item2.ValueArray[0].IsFloatingPoint)
+                {
+                    if (param.Item2.ValueArray.Where(x => x.ValueFloatingPoint != null).Count() == 3)
+                        value = new Vector3((float)param.Item2.ValueArray[0].ValueFloatingPoint, (float)param.Item2.ValueArray[1].ValueFloatingPoint, (float)param.Item2.ValueArray[2].ValueFloatingPoint);
+                    else if (param.Item2.ValueArray.Where(x => x.ValueFloatingPoint != null).Count() == 2)
+                        value = new Vector2((float)param.Item2.ValueArray[0].ValueFloatingPoint, (float)param.Item2.ValueArray[1].ValueFloatingPoint);
+                    else
+                    {
+                        value = new object[param.Item2.ValueArray.Count];
+                        for (int i = 0; i < param.Item2.ValueArray.Count; i++)
+                            ((object[])value)[i] = CreateGeditParameterObject(new(param.Item1, param.Item2.ValueArray[i]), TemplateData.structs[strName].fields.Where(x => x.name == param.Item1).First().subtype);
+                    }
+                }
                 else
                 {
                     value = new object[param.Item2.ValueArray.Count];
@@ -643,7 +652,16 @@ public class ObjectWorld : IFile
                         str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), TemplateData.structs[strName].parent));
                 else
                     foreach (var i in param.Item2.ValueObject)
-                        str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), TemplateData.structs[strName].fields.Where(x => x.name == param.Item1).First().type));
+                    {
+                        if (TemplateData.structs[strName].fields.Where(x => x.name == param.Item1).Count() > 0)
+                            str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), TemplateData.structs[strName].fields.Where(x => x.name == param.Item1).First().type));
+                        else
+                        {
+                            str.Add(i.Key, CreateGeditParameterObject(new(i.Key, i.Value), strName));
+                        }
+
+                    }
+
                 value = str;
                 break;
         }

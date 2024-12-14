@@ -28,6 +28,11 @@ public static class MathA
         public byte g;
         public byte b;
         public byte a;
+
+        public override string ToString()
+        {
+            return $"#{r.ToString("X2")}{g.ToString("X2")}{b.ToString("X2")}{a.ToString("X2")}";
+        }
     }
 
     public struct ColorF
@@ -36,5 +41,13 @@ public static class MathA
         public float g;
         public float b;
         public float a;
+    }
+
+    public struct Crop
+    {
+        public float Left;
+        public float Top;
+        public float Right;
+        public float Bottom;
     }
 }

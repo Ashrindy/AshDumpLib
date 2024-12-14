@@ -7,6 +7,8 @@ using AshDumpLib.HedgehogEngine.BINA.Terrain;
 using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.Helpers.Archives;
 using K4os.Compression.LZ4;
+using System.Diagnostics.CodeAnalysis;
+using AshDumpLib.HedgehogEngine.BINA.Converse;
 
 namespace AshDumpLib.HedgehogEngine.Archives;
 
@@ -356,6 +358,7 @@ public class PAC : Archive
         }
         else
             throw new Exception("Unimplemented Version!");
+        //Console.WriteLine($"{FilePath}: {ParentPaths.Count}");
     }
 
     public static uint GenerateID()
@@ -465,6 +468,18 @@ public class PAC : Archive
                                     AddFile(text);
                                     break;
 
+                                case "cnvrs-meta":
+                                    TextMeta textmeta = new();
+                                    textmeta.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(textmeta);
+                                    break;
+
+                                case "cnvrs-proj":
+                                    TextProject textproj = new();
+                                    textproj.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(textproj);
+                                    break;
+
                                 case "densitypointcloud":
                                     DensityPointCloud densityPointCloud = new();
                                     densityPointCloud.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
@@ -511,6 +526,12 @@ public class PAC : Archive
                                     ParticleLocator particleLocator = new();
                                     particleLocator.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
                                     AddFile(particleLocator);
+                                    break;
+
+                                case "pba":
+                                    PhysicalSkeleton pba = new();
+                                    pba.Open($"{name}.{tree.nodes[i].data.nodes[x].data.extension}", data);
+                                    AddFile(pba);
                                     break;
 
                                 case "pcmodel" or "pcrt" or "pccol":
@@ -657,7 +678,7 @@ public class PAC : Archive
         writer.AddOffset("offTableSize", false);
         writer.Write((short)Type);
         //Just a temporary thing for now
-        writer.Write((short)8);
+        writer.Write((short)264);
         writer.Write(dependencies.Count);
         Tree<Node<Tree<Node<FileNode>>>> tree = new();
         Random rnd = new();
@@ -735,50 +756,30 @@ public class PAC : Archive
                 dataNode.dataIndex = dataIndex;
                 dataNode.bufferStartIndex = i.start + i.value.Length;
                 dataNode.data = new();
-                Node<FileNode> mainfileNode = new();
-                mainfileNode.ID = Random.Shared.Next();
-                mainfileNode.name = "";
-                mainfileNode.parentIndex = -1;
-                mainfileNode.globalIndex = 0;
-                mainfileNode.dataIndex = -1;
-                mainfileNode.bufferStartIndex = 0;
-                dataNode.data.nodes.Add(mainfileNode);
                 tree.indices.Add(index + 1);
-                int filedataIndex = 1;
+                int filedataIndex = 0;
                 int filedatadataindex = 0;
-                foreach(var x in filesSorted[ResTypesRangers.Find(l => l.Type.Contains(i.parent + i.value)).Type])
+                RadixTree fileRadix = new();
+                foreach (var x in filesSorted[ResTypesRangers.Find(l => l.Type.EndsWith(i.parent + i.value)).Type])
+                    fileRadix.Add(x);
+                fileRadix.Sort();
+
+                foreach (var x in fileRadix.Nodes)
                 {
-                    Node<FileNode> fileNode = new();
-                    fileNode.ID = Random.Shared.Next();
-                    fileNode.name = x.FileName.Replace($".{x.Extension}", "");
-                    fileNode.parentIndex = 0;
-                    fileNode.globalIndex = filedataIndex;
-                    fileNode.dataIndex = -1;
-                    dataNode.data.nodes[0].childIndices.Add(filedataIndex);
-                    fileNode.childIndices.Add(filedataIndex + 1);
-                    fileNode.bufferStartIndex = 0;
-                    dataNode.data.nodes.Add(fileNode);
-                    Node<FileNode> fileDataNode = new();
-                    fileDataNode.data = new();
-                    fileDataNode.ID = Random.Shared.Next();
-                    fileDataNode.name = "";
-                    fileDataNode.parentIndex = filedataIndex;
-                    fileDataNode.globalIndex = filedataIndex + 1;
-                    fileDataNode.dataIndex = filedatadataindex;
-                    fileDataNode.bufferStartIndex = x.FileName.Replace($".{x.Extension}", "").Length;
-                    fileDataNode.data.uid = (int)GenerateID();
-                    fileDataNode.data.extension = x.Extension;
-                    fileDataNode.data.flags = 0;
-                    fileDataNode.data.data = x.Data;
-                    if (GetResTypeByExt(x.Extension).Location == ResType.ELocation.Split && Type != PacType.Split)
-                        fileDataNode.data.flags = 1;
-                    if (x.Data[0] == 'B' && x.Data[1] == 'I' && x.Data[2] == 'N' && x.Data[3] == 'A')
-                        fileDataNode.data.flags = 2;
-                    dataNode.data.nodes.Add(fileDataNode);
-                    dataNode.data.indices.Add(filedataIndex + 1);
+                    if(x.data != null)
+                    {
+                        if (GetResTypeByExt(x.data.extension).Location == ResType.ELocation.Split && Type != PacType.Split)
+                            x.data.flags = 1;
+                        x.dataIndex = filedatadataindex;
+                        filedatadataindex++;
+                        dataNode.data.indices.Add(filedataIndex);
+                    }
+                    else
+                    {
+                        x.dataIndex = -1;
+                    }
+                    dataNode.data.nodes.Add(x);
                     filedataIndex++;
-                    filedataIndex++;
-                    filedatadataindex++;
                 }
                 tree.nodes.Add(node);
                 tree.nodes.Add(dataNode);
@@ -789,15 +790,13 @@ public class PAC : Archive
                 tree.nodes.Add(node);
             index++;
         }
-        index = 1;
         foreach(var i in f)
         {
             if (i.children != null && i.children.Count > 0)
             {
                 foreach (var y in i.children)
-                    tree.nodes[index].childIndices.Add(tree.nodes.Find(x => x.name == y).globalIndex);
+                    tree.nodes.Find(x => x.name == i.value).childIndices.Add(tree.nodes.Find(x => x.name == y).globalIndex);
             }
-            index++;
         }
         tree.idname = "mainTree";
         int treesSize = (int)writer.Position;
@@ -814,6 +813,8 @@ public class PAC : Archive
         }
         tree.FinishWriteIndices(writer);
         tree.FinishWriteChildIndices(writer);
+        foreach(var i in tree.nodes)
+            i.FinishWriteChildIndicesData(writer);
         writer.Align(8);
         treesSize = (int)writer.Position - treesSize;
         writer.WriteAt(treesSize, writer.GetOffset("treesSize"));
@@ -876,11 +877,9 @@ public class PAC : Archive
         int fileDataSize = (int)writer.Position;
         foreach(var i in tree.indices)
             foreach(var x in tree.nodes[i].data.indices)
-            {
-                writer.Align(16);
                 tree.nodes[i].data.nodes[x].data.WriteData(writer);
-            }
 
+        writer.Align(8);
         fileDataSize = (int)writer.Position - fileDataSize;
 
         writer.WriteAt(fileDataSize, writer.GetOffset("fileDataSize"));
@@ -964,9 +963,7 @@ public class PAC : Archive
         long prePos1 = reader.Position;
         reader.Seek(header2.rootOffset, SeekOrigin.Begin);
         if(rootChunk.uncompressedSize == rootChunk.compressedSize)
-        {
             rootChunk.uncompressedData = reader.ReadArray<byte>(rootChunk.uncompressedSize);
-        }
         else
         {
             rootChunk.uncompressedData = new byte[rootChunk.uncompressedSize];
@@ -977,8 +974,11 @@ public class PAC : Archive
                 chunkInfos[i].uncompressedData = new byte[chunkInfos[i].uncompressedSize];
                 _ = LZ4Codec.Decode(chunkInfos[i].compressedData, 0, chunkInfos[i].compressedSize, chunkInfos[i].uncompressedData, 0, chunkInfos[i].uncompressedSize);
                 uncompressedRootData.AddRange(chunkInfos[i].uncompressedData);
+                chunkInfos[i].compressedData = new byte[0];
+                chunkInfos[i].uncompressedData = new byte[0];
             }
             rootChunk.uncompressedData = uncompressedRootData.ToArray();
+            uncompressedRootData.Clear();
         }
         reader.Seek(prePos1, SeekOrigin.Begin);
         //File.WriteAllBytes(FilePath + "_og.root", rootChunk.uncompressedData);
@@ -1002,6 +1002,8 @@ public class PAC : Archive
                     rootPac.dependencies[i].chunks[x].uncompressedData = new byte[rootPac.dependencies[i].chunks[x].uncompressedSize];
                     _ = LZ4Codec.Decode(rootPac.dependencies[i].chunks[x].compressedData, 0, rootPac.dependencies[i].chunks[x].compressedSize, rootPac.dependencies[i].chunks[x].uncompressedData, 0, rootPac.dependencies[i].chunks[x].uncompressedSize);
                     uncompressedData.AddRange(rootPac.dependencies[i].chunks[x].uncompressedData);
+                    rootPac.dependencies[i].chunks[x].compressedData = new byte[0];
+                    rootPac.dependencies[i].chunks[x].uncompressedData = new byte[0];
                 }
                 rootPac.dependencies[i].main.uncompressedData = uncompressedData.ToArray();
             }
@@ -1111,7 +1113,8 @@ public class PAC : Archive
         writer.Write(compressedSize);
         writer.Write(rootChunk.uncompressedData.Length);
         FlagsV4 flags = FlagsV4.unk | FlagsV4.hasMetadata;
-        flags |= FlagsV4.hasParents;
+        if(ParentPaths.Count > 0)
+            flags |= FlagsV4.hasParents;
         writer.Write((short)flags);
         writer.Write((short)(FlagsV3.unk | FlagsV3.lz4));
 
@@ -1120,14 +1123,17 @@ public class PAC : Archive
         writer.AddOffset("strTableSize", false);
         writer.AddOffset("offTableSize", false);
         int parentsSize = (int)writer.Position;
-        writer.Write((long)ParentPaths.Count);
-        writer.AddOffset("parentsTable", true);
-        writer.WriteNulls(4);
-        writer.SetOffset("parentsTable");
-        foreach (var path in ParentPaths)
+        if(ParentPaths.Count > 0)
         {
-            writer.AddOffset(path, true);
+            writer.Write((long)ParentPaths.Count);
+            writer.AddOffset("parentsTable", true);
             writer.WriteNulls(4);
+            writer.SetOffset("parentsTable");
+            foreach (var path in ParentPaths)
+            {
+                writer.AddOffset(path, true);
+                writer.WriteNulls(4);
+            }
         }
         parentsSize = (int)writer.Position - parentsSize;
         writer.WriteAt(parentsSize, writer.GetOffset("parentsSize"));
@@ -1480,6 +1486,10 @@ public class PAC : Archive
                 writer.WriteArray(childIndices.ToArray());
                 writer.Align(8);
             }
+        }
+
+        public void FinishWriteChildIndicesData(ExtendedBinaryWriter writer)
+        {
             if (data != null)
                 data.FinishWriteChildIndices(writer);
         }
@@ -1492,10 +1502,10 @@ public class PAC : Archive
 
     class FileNode : IPACSerializable
     {
-        public int uid;
+        public int uid = (int)GenerateID();
         public int dataSize;
         public long dataPtr;
-        public long flags;
+        public long flags = 0;
         public string extension = "";
         public byte[] data = new byte[0];
 
@@ -1527,6 +1537,8 @@ public class PAC : Archive
             writer.Skip(4);
             writer.WriteNulls(8);
             writer.WriteStringTableEntry(extension);
+            if (data[0] == 'B' && data[1] == 'I' && data[2] == 'N' && data[3] == 'A')
+                flags = 2;
             writer.Write(flags);
         }
 
@@ -1538,6 +1550,7 @@ public class PAC : Archive
         {
             if (flags != 1)
             {
+                writer.Align(16);
                 writer.SetOffset(uid.ToString());
                 writer.WriteArray(data);
             }
@@ -1588,5 +1601,201 @@ public class PAC : Archive
         Split,
         HasSplits = 4,
         unk = 8
+    }
+
+
+    class RadixTree
+    {
+        public List<Node<FileNode>> Nodes = new();
+        List<Node<FileNode>> nodes;
+
+        public RadixTree()
+        {
+            nodes = new List<Node<FileNode>>{ new Node<FileNode> { name = "", parentIndex = -1, globalIndex = 0 } };
+        }
+
+        public void Add(IFile file)
+        {
+            string word = file.FileName.Replace($".{file.Extension}", "");
+            var fileNodeData = new FileNode
+            {
+                data = file.Data,
+                extension = file.Extension
+            };
+
+            int currentNodeIndex = 0; // Start at the root
+            Node<FileNode> currentNode = nodes[currentNodeIndex];
+            int position = 0;
+
+
+            while (true)
+            {
+                string matchingKey = null;
+                int matchingChildIndex = -1;
+
+                // Find a child node with a common prefix
+                foreach (int childIndex in currentNode.childIndices)
+                {
+                    var child = nodes[childIndex];
+                    string prefix = GetCommonPrefix(word, child.name);
+                    if (prefix.Length > 0)
+                    {
+                        matchingKey = child.name;
+                        matchingChildIndex = childIndex;
+                        break;
+                    }
+                }
+
+                // No matching key found, create a new node
+                if (matchingKey == null)
+                {
+                    var newNode = new Node<FileNode>
+                    {
+                        name = word,
+                        parentIndex = currentNodeIndex,
+                        globalIndex = nodes.Count,
+                        data = fileNodeData,
+                        bufferStartIndex = position
+                    };
+
+                    currentNode.childIndices.Add(nodes.Count);
+                    nodes.Add(newNode);
+                    break;
+                }
+
+                // Matching key fully aligns; traverse deeper into the tree
+                string prefixMatch = GetCommonPrefix(word, matchingKey);
+                if (prefixMatch == matchingKey)
+                {
+                    currentNodeIndex = matchingChildIndex;
+                    currentNode = nodes[currentNodeIndex];
+                    position += prefixMatch.Length;
+                    word = word.Substring(prefixMatch.Length);
+                }
+                // Partial match, split the node
+                else
+                {
+                    string remainingKey = matchingKey.Substring(prefixMatch.Length);
+                    string remainingWord = word.Substring(prefixMatch.Length);
+
+                    // Split the matching child
+                    var splitNode = new Node<FileNode>
+                    {
+                        name = prefixMatch,
+                        parentIndex = currentNodeIndex,
+                        globalIndex = nodes.Count,
+                        bufferStartIndex = position
+                    };
+
+                    var existingChildNode = nodes[matchingChildIndex];
+                    existingChildNode.name = remainingKey;
+                    existingChildNode.parentIndex = splitNode.globalIndex;
+                    existingChildNode.bufferStartIndex += prefixMatch.Length;
+
+                    // Adjust tree structure
+                    currentNode.childIndices.Remove(matchingChildIndex);
+                    currentNode.childIndices.Add(splitNode.globalIndex);
+                    splitNode.childIndices.Add(matchingChildIndex);
+                    nodes.Add(splitNode);
+
+                    // Create new child node for the remaining word
+                    if (remainingWord.Length > 0)
+                    {
+                        var newChildNode = new Node<FileNode>
+                        {
+                            name = remainingWord,
+                            parentIndex = splitNode.globalIndex,
+                            globalIndex = nodes.Count,
+                            data = fileNodeData,
+                            bufferStartIndex = position + prefixMatch.Length,
+                        };
+                        splitNode.childIndices.Add(nodes.Count);
+                        nodes.Add(newChildNode);
+                    }
+                    else
+                    {
+                        splitNode.data = fileNodeData;
+                    }
+                    break;
+                }
+            }
+        }
+
+        int curNodeId = 0;
+
+        void SortNodes(int nodeIndex)
+        {
+            nodes[nodeIndex].globalIndex = curNodeId;
+            List<int> indices = new();
+            if (nodes[nodeIndex].data != null)
+            {
+                Node<FileNode> fNode = new()
+                {
+                    name = "",
+                    data = nodes[nodeIndex].data,
+                    parentIndex = curNodeId,
+                    globalIndex = curNodeId+1,
+                    bufferStartIndex = nodes[nodeIndex].bufferStartIndex + nodes[nodeIndex].name.Length,
+                };
+                curNodeId++;
+                nodes[nodeIndex].data = null;
+                indices.Add(curNodeId);
+                Nodes.Add(nodes[nodeIndex]);
+                Nodes.Add(fNode);
+                foreach (var i in nodes[nodeIndex].childIndices)
+                {
+                    curNodeId++;
+                    nodes[i].globalIndex = curNodeId;
+                    nodes[i].parentIndex = nodes[nodeIndex].globalIndex;
+                    indices.Add(curNodeId);
+                    SortNodes(i);
+                }
+                Nodes[Nodes.Count - 2].childIndices = indices;
+            }
+            else
+            {
+                foreach (var i in nodes[nodeIndex].childIndices)
+                {
+                    curNodeId++;
+                    nodes[i].globalIndex = curNodeId;
+                    nodes[i].parentIndex = nodes[nodeIndex].globalIndex;
+                    indices.Add(curNodeId);
+                    SortNodes(i);
+                }
+                nodes[nodeIndex].childIndices = indices;
+                Nodes.Add(nodes[nodeIndex]);
+            }
+        }
+
+        public void Sort()
+        {
+            SortNodes(0);
+            Nodes.Sort((a,b) => a.globalIndex.CompareTo(b.globalIndex));
+        }
+
+        string GetCommonPrefix(string s1, string s2)
+        {
+            int length = Math.Min(s1.Length, s2.Length);
+            int i = 0;
+            while (i < length && s1[i] == s2[i]) i++;
+            return s1.Substring(0, i);
+        }
+
+        public void Print()
+        {
+            PrintNode(0, "", 0);
+        }
+
+        void PrintNode(int nodeIndex, string indent, int depth)
+        {
+            var node = Nodes[nodeIndex];
+
+            //Console.WriteLine($"{indent}{node.name} (ParentIndex: {node.parentIndex}, FileData: {(node.data != null ? "Yes" : "No")})");
+
+            foreach (int childIndex in node.childIndices)
+            {
+                PrintNode(childIndex, indent + "  ", depth + 1);
+            }
+        }
     }
 }

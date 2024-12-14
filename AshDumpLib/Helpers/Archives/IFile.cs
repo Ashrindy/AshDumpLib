@@ -12,13 +12,7 @@ public class IFile
 
     public IFile() { }
 
-    public IFile(string filePath)
-    {
-        FileName = Path.GetFileName(filePath);
-        FilePath = filePath;
-        Extension = FileName.Substring(FileName.IndexOf('.') + 1);
-        Data = File.ReadAllBytes(FilePath);
-    }
+    public IFile(string filePath) : this(filePath, File.ReadAllBytes(filePath)) { }
 
     public IFile(string filePath, byte[] data)
     {
@@ -30,11 +24,7 @@ public class IFile
 
     public virtual void Open(string filename)
     {
-        FileName = Path.GetFileName(filename);
-        FilePath = filename;
-        Extension = FileName.Substring(FileName.IndexOf('.') + 1);
-        Data = File.ReadAllBytes(FilePath);
-        ReadBuffer();
+        Open(filename, File.ReadAllBytes(filename));
     }
 
     public virtual void Open(string filename, byte[] data)

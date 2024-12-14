@@ -42,7 +42,7 @@ public class SkeletonPXD : IFile
         for (int i = 0; i < parentIndexCount; i++)
         {
             Bone bone = new Bone();
-            bone.ParentIndex = reader.Read<ushort>();
+            bone.ParentIndex = reader.Read<short>();
             Bones.Add(bone);
         }
 
