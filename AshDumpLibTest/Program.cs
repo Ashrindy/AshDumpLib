@@ -114,7 +114,10 @@ txt.SaveToFile(filepath + ".cnvrs-text");*/
 /*OpticalKerning okern = new(filepath);
 okern.SaveToFile(filepath + ".okern");*/
 
-ScalableFontSet scfnt = new(filepath);
-scfnt.SaveToFile(filepath + ".scfnt");
+/*ScalableFontSet scfnt = new(filepath);
+scfnt.SaveToFile(filepath + ".scfnt");*/
+
+MasterLevel mlevel = new(filepath);
+mlevel.SaveToFile(filepath + ".mlevel");
 
 Console.WriteLine("test");
