@@ -12,6 +12,7 @@ using AshDumpLib.Helpers.Archives;
 using AshDumpLibTest;
 using System;
 using AshDumpLib.HedgehogEngine.BINA.Converse;
+using AshDumpLib.HedgehogEngine.BINA.ScalableFont;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
@@ -107,7 +108,13 @@ meta.SaveToFile(filepath + ".cnvrs-meta");*/
 /*TextProject proj = new(filepath);
 proj.SaveToFile(filepath + ".cnvrs-proj");*/
 
-Text txt = new(filepath);
-txt.SaveToFile(filepath + ".cnvrs-text");
+/*Text txt = new(filepath);
+txt.SaveToFile(filepath + ".cnvrs-text");*/
+
+/*OpticalKerning okern = new(filepath);
+okern.SaveToFile(filepath + ".okern");*/
+
+ScalableFontSet scfnt = new(filepath);
+scfnt.SaveToFile(filepath + ".scfnt");
 
 Console.WriteLine("test");
