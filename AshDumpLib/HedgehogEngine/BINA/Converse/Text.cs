@@ -110,7 +110,7 @@ public class Text : IFile
         {
             ID = reader.Read<long>();
             Key = reader.ReadStringTableEntry();
-            Font.Read(reader);
+            FontLayout.Read(reader);
             long textPtr = reader.Read<long>();
             long textLength = reader.Read<long>();
             reader.ReadAtOffset(textPtr + 64, () =>
