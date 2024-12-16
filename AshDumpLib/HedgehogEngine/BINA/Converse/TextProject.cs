@@ -208,22 +208,27 @@ public class TextProject : IFile
 
         public class Font : ILang
         {
+            public struct FontInfo
+            {
+                public string IDName;
+                public string FontName;
+                public float? Unk0;
+                public float? Unk1;
+                public float? Unk2;
+                public int? Unk3;
+                public int? Unk4;
+                public int? Unk5;
+                public int? Unk6;
+                public int? Unk7;
+                public int? Unk8;
+                public int? Unk9;
+                public int? Unk10;
+                public int? Unk11;
+            }
+
             long id = Random.Shared.NextInt64();
 
-            public string IDName = "";
-            public string FontName = "";
-            public float? Unk0 = null;
-            public float? Unk1 = null;
-            public float? Unk2 = null;
-            public int? Unk3 = null;
-            public int? Unk4 = null;
-            public int? Unk5 = null;
-            public int? Unk6 = null;
-            public int? Unk7 = null;
-            public int? Unk8 = null;
-            public int? Unk9 = null;
-            public int? Unk10 = null;
-            public int? Unk11 = null;
+            public FontInfo Data = new();
 
             public Font() { }
 
@@ -241,27 +246,27 @@ public class TextProject : IFile
                 long ptr = reader.Read<long>();
                 reader.ReadAtOffset(ptr + 64, () =>
                 {
-                    IDName = reader.ReadStringTableEntry();
-                    FontName = reader.ReadStringTableEntry();
-                    Unk0 = ReadValue<float>(reader);
-                    Unk1 = ReadValue<float>(reader);
-                    Unk2 = ReadValue<float>(reader);
-                    Unk3 = ReadValue<int>(reader);
-                    Unk4 = ReadValue<int>(reader);
-                    Unk5 = ReadValue<int>(reader);
-                    Unk6 = ReadValue<int>(reader);
-                    Unk7 = ReadValue<int>(reader);
-                    Unk8 = ReadValue<int>(reader);
-                    Unk8 = ReadValue<int>(reader);
-                    Unk9 = ReadValue<int>(reader);
-                    Unk10 = ReadValue<int>(reader);
-                    Unk11 = ReadValue<int>(reader);
+                    Data.IDName = reader.ReadStringTableEntry();
+                    Data.FontName = reader.ReadStringTableEntry();
+                    Data.Unk0 = ReadValue<float>(reader);
+                    Data.Unk1 = ReadValue<float>(reader);
+                    Data.Unk2 = ReadValue<float>(reader);
+                    Data.Unk3 = ReadValue<int>(reader);
+                    Data.Unk4 = ReadValue<int>(reader);
+                    Data.Unk5 = ReadValue<int>(reader);
+                    Data.Unk6 = ReadValue<int>(reader);
+                    Data.Unk7 = ReadValue<int>(reader);
+                    Data.Unk8 = ReadValue<int>(reader);
+                    Data.Unk8 = ReadValue<int>(reader);
+                    Data.Unk9 = ReadValue<int>(reader);
+                    Data.Unk10 = ReadValue<int>(reader);
+                    Data.Unk11 = ReadValue<int>(reader);
                 });
             }
 
             public void Write(BINAWriter writer)
             {
-                writer.AddOffset(IDName + FontName + id);
+                writer.AddOffset(Data.IDName + Data.FontName + id);
             }
 
             void WriteValue<T>(BINAWriter writer, string name, T? value) where T : unmanaged
@@ -269,14 +274,14 @@ public class TextProject : IFile
                 if(value == null)
                     writer.WriteNulls(8);
                 else
-                    writer.AddOffset(IDName + FontName + id + name);
+                    writer.AddOffset(Data.IDName + Data.FontName + id + name);
             }
 
             void FinishWriteValue<T>(BINAWriter writer, string name, T? value) where T : unmanaged
             {
                 if (value != null)
                 {
-                    writer.SetOffset(IDName + FontName + id + name);
+                    writer.SetOffset(Data.IDName + Data.FontName + id + name);
                     writer.Write((T)value);
                     writer.WriteNulls(4);
                 }
@@ -284,45 +289,45 @@ public class TextProject : IFile
 
             public void FinishWrite(BINAWriter writer, ref Dictionary<string, long> values)
             {
-                if (values.ContainsKey(IDName + FontName))
+                if (values.ContainsKey(Data.IDName + Data.FontName))
                 {
                     long prePos = writer.Position;
-                    writer.Seek(values[IDName + FontName], SeekOrigin.Begin);
-                    writer.SetOffset(IDName + FontName + id);
+                    writer.Seek(values[Data.IDName + Data.FontName], SeekOrigin.Begin);
+                    writer.SetOffset(Data.IDName + Data.FontName + id);
                     writer.Seek(prePos, SeekOrigin.Begin);
                 }
                 else
                 {
-                    values.Add(IDName + FontName, writer.Position);
-                    writer.SetOffset(IDName + FontName + id);
-                    writer.WriteStringTableEntry(IDName);
-                    writer.WriteStringTableEntry(FontName);
-                    WriteValue(writer, "0", Unk0);
-                    WriteValue(writer, "1", Unk1);
-                    WriteValue(writer, "2", Unk2);
-                    WriteValue(writer, "3", Unk3);
-                    WriteValue(writer, "4", Unk4);
-                    WriteValue(writer, "5", Unk5);
-                    WriteValue(writer, "6", Unk6);
-                    WriteValue(writer, "7", Unk7);
-                    WriteValue(writer, "8", Unk8);
-                    WriteValue(writer, "9", Unk9);
-                    WriteValue(writer, "10", Unk10);
-                    WriteValue(writer, "11", Unk11);
+                    values.Add(Data.IDName + Data.FontName, writer.Position);
+                    writer.SetOffset(Data.IDName + Data.FontName + id);
+                    writer.WriteStringTableEntry(Data.IDName);
+                    writer.WriteStringTableEntry(Data.FontName);
+                    WriteValue(writer, "0", Data.Unk0);
+                    WriteValue(writer, "1", Data.Unk1);
+                    WriteValue(writer, "2", Data.Unk2);
+                    WriteValue(writer, "3", Data.Unk3);
+                    WriteValue(writer, "4", Data.Unk4);
+                    WriteValue(writer, "5", Data.Unk5);
+                    WriteValue(writer, "6", Data.Unk6);
+                    WriteValue(writer, "7", Data.Unk7);
+                    WriteValue(writer, "8", Data.Unk8);
+                    WriteValue(writer, "9", Data.Unk9);
+                    WriteValue(writer, "10", Data.Unk10);
+                    WriteValue(writer, "11", Data.Unk11);
                     writer.WriteNulls(8);
 
-                    FinishWriteValue(writer, "0", Unk0);
-                    FinishWriteValue(writer, "1", Unk1);
-                    FinishWriteValue(writer, "2", Unk2);
-                    FinishWriteValue(writer, "3", Unk3);
-                    FinishWriteValue(writer, "4", Unk4);
-                    FinishWriteValue(writer, "5", Unk5);
-                    FinishWriteValue(writer, "6", Unk6);
-                    FinishWriteValue(writer, "7", Unk7);
-                    FinishWriteValue(writer, "8", Unk8);
-                    FinishWriteValue(writer, "9", Unk9);
-                    FinishWriteValue(writer, "10", Unk10);
-                    FinishWriteValue(writer, "11", Unk11);
+                    FinishWriteValue(writer, "0", Data.Unk0);
+                    FinishWriteValue(writer, "1", Data.Unk1);
+                    FinishWriteValue(writer, "2", Data.Unk2);
+                    FinishWriteValue(writer, "3", Data.Unk3);
+                    FinishWriteValue(writer, "4", Data.Unk4);
+                    FinishWriteValue(writer, "5", Data.Unk5);
+                    FinishWriteValue(writer, "6", Data.Unk6);
+                    FinishWriteValue(writer, "7", Data.Unk7);
+                    FinishWriteValue(writer, "8", Data.Unk8);
+                    FinishWriteValue(writer, "9", Data.Unk9);
+                    FinishWriteValue(writer, "10", Data.Unk10);
+                    FinishWriteValue(writer, "11", Data.Unk11);
                 }
             }
 
@@ -334,18 +339,23 @@ public class TextProject : IFile
 
         public class Layout : ILang
         {
+            public struct LayoutInfo
+            {
+                public string IDName;
+                public float? Unk0;
+                public float? Unk1;
+                public int? Unk2;
+                public int? Unk3;
+                public int? Unk4;
+                public int? Unk5;
+                public int? Unk6;
+                public int? Unk7;
+                public int? Unk8;
+            }
+
             long id = Random.Shared.NextInt64();
 
-            public string IDName = "";
-            public float? Unk0 = null;
-            public float? Unk1 = null;
-            public int? Unk2 = null;
-            public int? Unk3 = null;
-            public int? Unk4 = null;
-            public int? Unk5 = null;
-            public int? Unk6 = null;
-            public int? Unk7 = null;
-            public int? Unk8 = null;
+            public LayoutInfo Data = new();
 
             public Layout() { }
 
@@ -363,23 +373,23 @@ public class TextProject : IFile
                 long ptr = reader.Read<long>();
                 reader.ReadAtOffset(ptr + 64, () =>
                 {
-                    IDName = reader.ReadStringTableEntry();
+                    Data.IDName = reader.ReadStringTableEntry();
                     reader.Skip(8);
-                    Unk0 = ReadValue<float>(reader);
-                    Unk1 = ReadValue<float>(reader);
-                    Unk2 = ReadValue<int>(reader);
-                    Unk3 = ReadValue<int>(reader);
-                    Unk4 = ReadValue<int>(reader);
-                    Unk5 = ReadValue<int>(reader);
-                    Unk6 = ReadValue<int>(reader);
-                    Unk7 = ReadValue<int>(reader);
-                    Unk8 = ReadValue<int>(reader);
+                    Data.Unk0 = ReadValue<float>(reader);
+                    Data.Unk1 = ReadValue<float>(reader);
+                    Data.Unk2 = ReadValue<int>(reader);
+                    Data.Unk3 = ReadValue<int>(reader);
+                    Data.Unk4 = ReadValue<int>(reader);
+                    Data.Unk5 = ReadValue<int>(reader);
+                    Data.Unk6 = ReadValue<int>(reader);
+                    Data.Unk7 = ReadValue<int>(reader);
+                    Data.Unk8 = ReadValue<int>(reader);
                 });
             }
 
             public void Write(BINAWriter writer)
             {
-                writer.AddOffset(IDName + id);
+                writer.AddOffset(Data.IDName + id);
             }
 
             void WriteValue<T>(BINAWriter writer, string name, T? value) where T : unmanaged
@@ -387,14 +397,14 @@ public class TextProject : IFile
                 if (value == null)
                     writer.WriteNulls(8);
                 else
-                    writer.AddOffset(IDName + id + name);
+                    writer.AddOffset(Data.IDName + id + name);
             }
 
             void FinishWriteValue<T>(BINAWriter writer, string name, T? value) where T : unmanaged
             {
                 if (value != null)
                 {
-                    writer.SetOffset(IDName + id + name);
+                    writer.SetOffset(Data.IDName + id + name);
                     writer.Write((T)value);
                     writer.WriteNulls(4);
                 }
@@ -402,39 +412,39 @@ public class TextProject : IFile
 
             public void FinishWrite(BINAWriter writer, ref Dictionary<string, long> values)
             {
-                if (values.ContainsKey(IDName))
+                if (values.ContainsKey(Data.IDName))
                 {
                     long prePos = writer.Position;
-                    writer.Seek(values[IDName], SeekOrigin.Begin);
-                    writer.SetOffset(IDName + id);
+                    writer.Seek(values[Data.IDName], SeekOrigin.Begin);
+                    writer.SetOffset(Data.IDName + id);
                     writer.Seek(prePos, SeekOrigin.Begin);
                 }
                 else
                 {
-                    values.Add(IDName, writer.Position);
-                    writer.SetOffset(IDName + id);
-                    writer.WriteStringTableEntry(IDName);
+                    values.Add(Data.IDName, writer.Position);
+                    writer.SetOffset(Data.IDName + id);
+                    writer.WriteStringTableEntry(Data.IDName);
                     writer.WriteNulls(8);
-                    WriteValue(writer, "0", Unk0);
-                    WriteValue(writer, "1", Unk1);
-                    WriteValue(writer, "2", Unk2);
-                    WriteValue(writer, "3", Unk3);
-                    WriteValue(writer, "4", Unk4);
-                    WriteValue(writer, "5", Unk5);
-                    WriteValue(writer, "6", Unk6);
-                    WriteValue(writer, "7", Unk7);
-                    WriteValue(writer, "8", Unk8);
+                    WriteValue(writer, "0", Data.Unk0);
+                    WriteValue(writer, "1", Data.Unk1);
+                    WriteValue(writer, "2", Data.Unk2);
+                    WriteValue(writer, "3", Data.Unk3);
+                    WriteValue(writer, "4", Data.Unk4);
+                    WriteValue(writer, "5", Data.Unk5);
+                    WriteValue(writer, "6", Data.Unk6);
+                    WriteValue(writer, "7", Data.Unk7);
+                    WriteValue(writer, "8", Data.Unk8);
                     writer.WriteNulls(8);
 
-                    FinishWriteValue(writer, "0", Unk0);
-                    FinishWriteValue(writer, "1", Unk1);
-                    FinishWriteValue(writer, "2", Unk2);
-                    FinishWriteValue(writer, "3", Unk3);
-                    FinishWriteValue(writer, "4", Unk4);
-                    FinishWriteValue(writer, "5", Unk5);
-                    FinishWriteValue(writer, "6", Unk6);
-                    FinishWriteValue(writer, "7", Unk7);
-                    FinishWriteValue(writer, "8", Unk8);
+                    FinishWriteValue(writer, "0", Data.Unk0);
+                    FinishWriteValue(writer, "1", Data.Unk1);
+                    FinishWriteValue(writer, "2", Data.Unk2);
+                    FinishWriteValue(writer, "3", Data.Unk3);
+                    FinishWriteValue(writer, "4", Data.Unk4);
+                    FinishWriteValue(writer, "5", Data.Unk5);
+                    FinishWriteValue(writer, "6", Data.Unk6);
+                    FinishWriteValue(writer, "7", Data.Unk7);
+                    FinishWriteValue(writer, "8", Data.Unk8);
                 }
             }
 

@@ -63,6 +63,11 @@ public class NTSP : IFile
         reader.Dispose();
     }
 
+    public override void Write(ExtendedBinaryWriter writer)
+    {
+        writer.WriteSignature(Signature);
+    }
+
     public struct Texture
     {
         public string Name;
