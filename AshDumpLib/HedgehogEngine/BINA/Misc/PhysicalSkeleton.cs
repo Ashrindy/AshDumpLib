@@ -268,12 +268,12 @@ public class PhysicalSkeleton : IFile
             }
 
             public LimitMode Mode;
-            public bool Enabled;
+            public bool SpringEnabled;
             private short align;
             public float LowLimit;
             public float HighLimit;
-            public float Stiffness;
-            public float Damping;
+            public float SpringStiffness;
+            public float SpringDamping;
         }
     }
 
