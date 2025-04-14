@@ -18,8 +18,6 @@ public class ReflectionData
     TemplateJSON TemplateData;
     string StructName = "";
 
-    bool Gedit = false;
-
     public int Version = 1;
 
     Dictionary<Tuple<string, long>, object[]> paramArrays = new();
@@ -47,7 +45,6 @@ public class ReflectionData
     }
 
     public void SetStructName(string structName) => StructName = structName;
-    public void SetGedit(bool gedit) => Gedit = gedit;
     public TemplateJSON GetTemplateData() { return TemplateData; }
 
     public void Read(BINAReader reader)
@@ -276,9 +273,7 @@ public class ReflectionData
         Span<byte> bytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref value, 1));
         var bits = new BitArray(bytes.ToArray());
         for (int i = 0; i < bits.Count; i++)
-        {
             returnValue.Add(bits[i]);
-        }
         return returnValue;
     }
 

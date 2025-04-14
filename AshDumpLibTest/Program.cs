@@ -117,7 +117,13 @@ okern.SaveToFile(filepath + ".okern");*/
 /*ScalableFontSet scfnt = new(filepath);
 scfnt.SaveToFile(filepath + ".scfnt");*/
 
-MasterLevel mlevel = new(filepath);
-mlevel.SaveToFile(filepath + ".mlevel");
+/*MasterLevel mlevel = new(filepath);
+mlevel.SaveToFile(filepath + ".mlevel");*/
+
+//CameraAnimation camAnim = new(filepath);
+//camAnim.SaveToFile(filepath + ".cam-anim");
+
+PhysicalSkeleton pba = new(filepath);
+pba.SaveToFile(filepath + ".pba");
 
 Console.WriteLine("test");

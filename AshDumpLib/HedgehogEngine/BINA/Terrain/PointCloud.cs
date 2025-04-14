@@ -45,32 +45,47 @@ public class PointCloud : IFile
 
     public class Point : IBINASerializable
     {
+        public enum RotationOrder : int
+        {
+            None,
+            XYZ,
+            YZX,
+            ZXY,
+            XZY,
+            YXZ,
+            ZYX
+        };
+
         public string InstanceName = "";
         public string ResourceName = "";
+        public RotationOrder RotateOrder = RotationOrder.XYZ;
         public Vector3 Position = new(0, 0, 0);
         public Vector3 Rotation = new(0, 0, 0);
         public Vector3 Scale = new(1, 1, 1);
+        public int Unk0 = 0;
 
         public void Read(BINAReader reader)
         {
+            reader.Align(8);
             InstanceName = reader.ReadStringTableEntry();
             ResourceName = reader.ReadStringTableEntry();
             Position = reader.Read<Vector3>();
             Rotation = reader.Read<Vector3>();
-            reader.Skip(4);
+            RotateOrder = reader.Read<RotationOrder>();
             Scale = reader.Read<Vector3>();
-            reader.Skip(8);
+            Unk0 = reader.Read<int>();
         }
 
         public void Write(BINAWriter writer)
         {
+            writer.Align(8);
             writer.WriteStringTableEntry(InstanceName);
             writer.WriteStringTableEntry(ResourceName);
             writer.Write(Position);
             writer.Write(Rotation);
-            writer.Write(1);
+            writer.Write(RotateOrder);
             writer.Write(Scale);
-            writer.WriteNulls(8);
+            writer.Write(Unk0);
         }
 
         public void FinishWrite(BINAWriter writer)

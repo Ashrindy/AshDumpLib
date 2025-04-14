@@ -223,7 +223,6 @@ public class ObjectWorld : IFile
                     reader.ReadAtOffset(paramPtr + 64, () =>
                     {
                         Parameters.SetStructName(TypeName);
-                        Parameters.SetGedit(true);
                         Parameters.Read(reader);
                     });
                 }
@@ -298,7 +297,6 @@ public class ObjectWorld : IFile
                         if (Parameters.GetTemplateData().tags != null)
                         {
                             Parameters.SetStructName(Parameters.GetTemplateData().tags[Name].structs);
-                            Parameters.SetGedit(true);
                             Parameters.Read(reader);
                         }
                     });

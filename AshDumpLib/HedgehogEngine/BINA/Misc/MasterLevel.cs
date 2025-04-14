@@ -66,7 +66,7 @@ public class MasterLevel : IFile
 
         public string Name = "";
         public List<File> Files = new();
-        public bool Unk0 = false;
+        public bool IsPublic = false;
         public List<string> Dependencies = new();
 
         public void Read(BINAReader reader)
@@ -92,7 +92,7 @@ public class MasterLevel : IFile
                             Dependencies.Add(reader.ReadStringTableEntry());
                         });
                 });
-                Unk0 = reader.Read<bool>();
+                IsPublic = reader.Read<bool>();
             });
         }
 
@@ -109,7 +109,7 @@ public class MasterLevel : IFile
             writer.Write(Dependencies.Count);
             writer.AddOffset($"{Name} files {Files.Count}");
             writer.AddOffset($"{Name} deps {Dependencies.Count}");
-            writer.Write(Unk0); // thought this could be `Dependencies.Count != 0` but i guess not, odd
+            writer.Write(IsPublic);
             writer.Write(Files.Count != 0);
             writer.Align(16);
         }

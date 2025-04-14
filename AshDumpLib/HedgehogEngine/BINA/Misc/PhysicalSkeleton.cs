@@ -13,9 +13,9 @@ public class PhysicalSkeleton : IFile
 
     public int Version = 1;
     public string SkeletonName = "";
-    public List<Collision> Collisions = new();
-    public List<Jiggle> Jiggles = new();
-    public List<Cloth> Clothes = new();
+    public List<RigidBody> RigidBodies = new();
+    public List<Constraint> Constraints = new();
+    public List<SoftBody> SoftBodies = new();
 
     public PhysicalSkeleton() { }
 
@@ -31,38 +31,37 @@ public class PhysicalSkeleton : IFile
         reader.ReadSignature(BINASignature);
         Version = reader.Read<int>();
         SkeletonName = reader.ReadStringTableEntry();
-        int collisionCount = reader.Read<int>();
-        int jiggleCount = reader.Read<int>();
+        int rigidBodyCount = reader.Read<int>();
+        int constraintCount = reader.Read<int>();
         reader.ReadAtOffset(reader.Read<long>() + 64, () =>
         {
-            for (int i = 0; i < collisionCount; i++)
+            for (int i = 0; i < rigidBodyCount; i++)
             {
-                Collision coll = new();
-                coll.Read(reader);
-                Collisions.Add(coll);
+                RigidBody rb = new();
+                rb.Read(reader);
+                RigidBodies.Add(rb);
             }
         });
         reader.ReadAtOffset(reader.Read<long>() + 64, () =>
         {
-            for (int i = 0; i < jiggleCount; i++)
+            for (int i = 0; i < constraintCount; i++)
             {
-                Jiggle jigg = new();
-                jigg.Read(reader);
-                Jiggles.Add(jigg);
+                Constraint co = new();
+                co.Read(reader);
+                Constraints.Add(co);
             }
         });
-        int clothCount = reader.Read<int>();
-        int unkCount = reader.Read<int>();
+        int softBodyCount = reader.Read<int>();
+        reader.Align(8);
         reader.ReadAtOffset(reader.Read<long>() + 64, () =>
         {
-            for (int i = 0; i < clothCount; i++)
+            for (int i = 0; i < softBodyCount; i++)
             {
-                Cloth clo = new();
-                clo.Read(reader);
-                Clothes.Add(clo);
+                SoftBody sb = new();
+                sb.Read(reader);
+                SoftBodies.Add(sb);
             }
         });
-        long unkPtr = reader.Read<long>();
         reader.Dispose();
     }
 
@@ -72,50 +71,50 @@ public class PhysicalSkeleton : IFile
         writer.WriteSignature(BINASignature);
         writer.Write(Version);
         writer.WriteStringTableEntry(SkeletonName);
-        writer.Write(Collisions.Count);
-        writer.Write(Jiggles.Count);
-        if(Collisions.Count > 0)
-            writer.AddOffset("collisions");
+        writer.Write(RigidBodies.Count);
+        writer.Write(Constraints.Count);
+        if(RigidBodies.Count > 0)
+            writer.AddOffset("rigidbodies");
         else
             writer.Write((long)0);
-        if (Jiggles.Count > 0)
-            writer.AddOffset("jiggles");
+        if (Constraints.Count > 0)
+            writer.AddOffset("constraints");
         else
             writer.Write((long)0);
-        writer.Write(Clothes.Count);
-        writer.Write(0);
-        if (Clothes.Count > 0)
-            writer.AddOffset("clothes");
+        writer.Write(SoftBodies.Count);
+        writer.Align(8);
+        if (SoftBodies.Count > 0)
+            writer.AddOffset("softbodies");
         else
             writer.Write((long)0);
-        writer.Write((long)0);
-        if(Collisions.Count > 0)
+        writer.Align(16);
+        if(RigidBodies.Count > 0)
         {
-            writer.SetOffset("collisions");
-            foreach (var i in Collisions)
+            writer.SetOffset("rigidbodies");
+            foreach (var i in RigidBodies)
                 i.Write(writer);
         }
-        if(Jiggles.Count > 0)
+        if(Constraints.Count > 0)
         {
-            writer.SetOffset("jiggles");
-            foreach (var i in Jiggles)
+            writer.SetOffset("constraints");
+            foreach (var i in Constraints)
                 i.Write(writer);
         }
-        if(Clothes.Count > 0)
+        if(SoftBodies.Count > 0)
         {
-            writer.SetOffset("clothes");
-            foreach (var i in Clothes)
+            writer.SetOffset("softbodies");
+            foreach (var i in SoftBodies)
                 i.Write(writer);
-            foreach (var i in Clothes)
+            foreach (var i in SoftBodies)
             {
-                writer.SetOffset(i.ClothName + i.Field28 + i.Field2A + i.Nodes.Count + "nodes");
+                writer.SetOffset(i.Name + i.Scale + i.DragCoeff + i.Nodes.Count + "nodes");
                 foreach (var x in i.Nodes)
                     x.Write(writer);
             }
-            foreach (var i in Clothes)
+            foreach (var i in SoftBodies)
             {
-                writer.SetOffset(i.ClothName + i.Field28 + i.Field2A + i.Edges.Count + "edges");
-                foreach (var x in i.Edges)
+                writer.SetOffset(i.Name + i.Scale + i.DragCoeff + i.Links.Count + "links");
+                foreach (var x in i.Links)
                     writer.Write(x);
             }
         }
@@ -124,27 +123,64 @@ public class PhysicalSkeleton : IFile
     }
 
 
-    public class Collision : IBINASerializable
+    public class RigidBody : IBINASerializable
     {
         public string BoneName = "";
-        public int Field08 = 1;
-        public float Field0C = 1f;
-        public Matrix4x4 Matrix = Matrix4x4.Identity;
+        public bool IsStaticObject = true;
+        public bool IsBox = false;
+        public float ShapeRadius = 0.0f;
+        public float ShapeHeight = 0.0f;
+        public float ShapeDepth = 0.0f;
+        public float Mass = 0.0f;
+        public float Friction = 0.0f;
+        public float Resitution = 0.0f;
+        public float LinearDamping = 0.0f;
+        public float AngularDamping = 0.0f;
+        public Vector3 OffsetPosition = new();
+        public Vector3 OffsetRotation = new();
 
         public void Read(BINAReader reader)
         {
+            reader.Align(16);
             BoneName = reader.ReadStringTableEntry();
-            Field08 = reader.Read<int>();
-            Field0C = reader.Read<float>();
-            Matrix = reader.Read<Matrix4x4>();
+            IsStaticObject = reader.Read<bool>();
+            IsBox = reader.Read<bool>();
+            reader.Align(4);
+            ShapeRadius = reader.Read<float>();
+            ShapeHeight = reader.Read<float>();
+            ShapeDepth = reader.Read<float>();
+            Mass = reader.Read<float>();
+            Friction = reader.Read<float>();
+            Resitution = reader.Read<float>();
+            LinearDamping = reader.Read<float>();
+            AngularDamping = reader.Read<float>();
+            reader.Align(16);
+            OffsetPosition = reader.Read<Vector3>();
+            reader.Align(16);
+            OffsetRotation = Helpers.ToEulerAngles(reader.Read<Quaternion>());
+            reader.Align(16);
         }
 
         public void Write(BINAWriter writer)
         {
+            writer.Align(16);
             writer.WriteStringTableEntry(BoneName);
-            writer.Write(Field08);
-            writer.Write(Field0C);
-            writer.Write(Matrix);
+            writer.Write(IsStaticObject);
+            writer.Write(IsBox);
+            writer.Align(4);
+            writer.Write(ShapeRadius);
+            writer.Write(ShapeHeight);
+            writer.Write(ShapeDepth);
+            writer.Write(Mass);
+            writer.Write(Friction);
+            writer.Write(Resitution);
+            writer.Write(LinearDamping);
+            writer.Write(AngularDamping);
+            writer.Align(16);
+            writer.Write(OffsetPosition);
+            writer.Align(16);
+            writer.Write(Helpers.ToQuaternion(OffsetRotation));
+            writer.Align(16);
         }
 
         public void FinishWrite(BINAWriter writer)
@@ -153,40 +189,68 @@ public class PhysicalSkeleton : IFile
         }
     }
 
-    public class Jiggle : IBINASerializable
+    public class Constraint : IBINASerializable
     {
         public string BoneName = "";
-        public byte[] Flags = new byte[4] { 0x1, 0x1, 0x14, 0x0 };
+        public byte Unk0 = 1;
+        public byte Unk1 = 1;
+        public short IterationCount = 20;
         public short LocalParentBoneIndex = -1;
         public short LocalBoneIndex = -1;
         public short SKLParentBoneIndex = 0;
-        public Limit[] Limits = new Limit[6];
-        public Matrix4x4 Matrix = Matrix4x4.Identity;
+        public Limit[] AngularLimits = new Limit[3];
+        public Limit[] LinearLimits = new Limit[3];
+        public Vector3 OffsetPositionA = new();
+        public Vector3 OffsetRotationA = new();
+        public Vector3 OffsetPositionB = new();
+        public Vector3 OffsetRotationB = new();
         
         public void Read(BINAReader reader)
         {
+            reader.Align(16);
             BoneName = reader.ReadStringTableEntry();
-            Flags = reader.ReadArray<byte>(4);
+            Unk0 = reader.Read<byte>();
+            Unk1 = reader.Read<byte>();
+            IterationCount = reader.Read<short>();
             LocalParentBoneIndex = reader.Read<short>();
             LocalBoneIndex = reader.Read<short>();
             SKLParentBoneIndex = reader.Read<short>();
             reader.Align(4);
-            Limits = reader.ReadArray<Limit>(6);
+            AngularLimits = reader.ReadArray<Limit>(3);
+            LinearLimits = reader.ReadArray<Limit>(3);
             reader.Align(16);
-            Matrix = reader.Read<Matrix4x4>();
+            OffsetPositionA = reader.Read<Vector3>();
+            reader.Align(16);
+            OffsetRotationA = Helpers.ToEulerAngles(reader.Read<Quaternion>());
+            reader.Align(16);
+            OffsetPositionB = reader.Read<Vector3>();
+            reader.Align(16);
+            OffsetRotationB = Helpers.ToEulerAngles(reader.Read<Quaternion>());
+            reader.Align(16);
         }
 
         public void Write(BINAWriter writer)
         {
+            writer.Align(16);
             writer.WriteStringTableEntry(BoneName);
-            writer.WriteArray(Flags);
+            writer.Write(Unk0);
+            writer.Write(Unk1);
+            writer.Write(IterationCount);
             writer.Write(LocalParentBoneIndex); 
             writer.Write(LocalBoneIndex); 
             writer.Write(SKLParentBoneIndex);
             writer.Align(4);
-            writer.WriteArray(Limits);
+            writer.WriteArray(AngularLimits);
+            writer.WriteArray(LinearLimits);
             writer.Align(16);
-            writer.Write(Matrix);
+            writer.Write(OffsetPositionA);
+            writer.Align(16);
+            writer.Write(Helpers.ToQuaternion(OffsetRotationA));
+            writer.Align(16);
+            writer.Write(OffsetPositionB);
+            writer.Align(16);
+            writer.Write(Helpers.ToQuaternion(OffsetRotationB));
+            writer.Align(16);
         }
 
         public void FinishWrite(BINAWriter writer)
@@ -196,34 +260,62 @@ public class PhysicalSkeleton : IFile
 
         public struct Limit
         {
-            public byte Field00;
-            public byte Field01;
-            public byte Field02;
-            public byte Field03;
-            public float Field04;
-            public float Field08;
-            public float Field0C;
-            public float Field10;
+            public enum LimitMode : byte
+            {
+                None,
+                Enabled,
+                Disabled
+            }
+
+            public LimitMode Mode;
+            public bool Enabled;
+            private short align;
+            public float LowLimit;
+            public float HighLimit;
+            public float Stiffness;
+            public float Damping;
         }
     }
 
-    public class Cloth : IBINASerializable
+    public class SoftBody : IBINASerializable
     {
-        public string ClothName = "";
-        public float[] Field08 = new float[10];
-        public short Field28 = 0;
-        public short Field2A = 0;
+        public string Name = "";
+        public float Scale = 1.0f;
+        public float DampingCoeff = 0.0f;
+        public float DragCoeff = 0.0f;
+        public float LiftCoeff = 0.0f;
+        public float DynamicFrictionCoeff = 0.0f;
+        public float PoseMatchingCoeff = 0.0f;
+        public float RigidContactCoeff = 0.0f;
+        public float KineticContactsHardness = 0.0f;
+        public float SoftContactsHardness = 0.0f;
+        public float AnchorsHardness = 0.0f;
+        public byte PositionIterationCount = 0;
+        public byte Unk0 = 0;
+        public short Unk1 = 0;
         public List<Node> Nodes = new();
-        public List<Edge> Edges = new();
+        public List<Link> Links = new();
 
         public void Read(BINAReader reader)
         {
-            ClothName = reader.ReadStringTableEntry();
-            Field08 = reader.ReadArray<float>(10);
-            Field28 = reader.Read<short>();
-            Field2A = reader.Read<short>();
+            reader.Align(8);
+            Name = reader.ReadStringTableEntry();
+            Scale = reader.Read<float>();
+            DampingCoeff = reader.Read<float>();
+            DragCoeff = reader.Read<float>();
+            LiftCoeff = reader.Read<float>();
+            DynamicFrictionCoeff = reader.Read<float>();
+            PoseMatchingCoeff = reader.Read<float>();
+            RigidContactCoeff = reader.Read<float>();
+            KineticContactsHardness = reader.Read<float>();
+            SoftContactsHardness = reader.Read<float>();
+            AnchorsHardness = reader.Read<float>();
+            PositionIterationCount = reader.Read<byte>();
+            Unk0 = reader.Read<byte>();
+            Unk1 = reader.Read<short>();
+            reader.Align(4);
             int nodeCount = reader.Read<int>();
-            int edgeCount = reader.Read<int>();
+            int linkCount = reader.Read<int>();
             reader.Align(8);
             reader.ReadAtOffset(reader.Read<long>() + 64, () =>
             {
@@ -236,21 +328,33 @@ public class PhysicalSkeleton : IFile
             });
             reader.ReadAtOffset(reader.Read<long>() + 64, () =>
             {
-                Edges = reader.ReadArray<Edge>(edgeCount).ToList();
+                Links = reader.ReadArray<Link>(linkCount).ToList();
             });
         }
 
         public void Write(BINAWriter writer)
         {
-            writer.WriteStringTableEntry(ClothName);
-            writer.WriteArray(Field08);
-            writer.Write(Field28);
-            writer.Write(Field2A);
-            writer.Write(Nodes.Count);
-            writer.Write(Edges.Count);
             writer.Align(8);
-            writer.AddOffset(ClothName + Field28 + Field2A + Nodes.Count + "nodes");
-            writer.AddOffset(ClothName + Field28 + Field2A + Edges.Count + "edges");
+            writer.WriteStringTableEntry(Name);
+            writer.Write(Scale);
+            writer.Write(DampingCoeff);
+            writer.Write(DragCoeff);
+            writer.Write(LiftCoeff);
+            writer.Write(DynamicFrictionCoeff);
+            writer.Write(PoseMatchingCoeff);
+            writer.Write(RigidContactCoeff);
+            writer.Write(KineticContactsHardness);
+            writer.Write(SoftContactsHardness);
+            writer.Write(AnchorsHardness);
+            writer.Write(PositionIterationCount);
+            writer.Write(Unk0);
+            writer.Write(Unk1);
+            writer.Align(4);
+            writer.Write(Nodes.Count);
+            writer.Write(Links.Count);
+            writer.Align(8);
+            writer.AddOffset(Name + Scale + DragCoeff + Nodes.Count + "nodes");
+            writer.AddOffset(Name + Scale + DragCoeff + Links.Count + "links");
         }
 
         public void FinishWrite(BINAWriter writer)
@@ -261,9 +365,9 @@ public class PhysicalSkeleton : IFile
         public class Node : IBINASerializable
         {
             public string BoneName = "";
-            public float GravityFactor = 1f;
-            public short Field0C = -1;
-            public short IsPinned = 0;
+            public float Mass = 1f;
+            public short Unk0 = -1;
+            public bool IsPinned = false;
             public short ChildID = -1;
             public short ParentID = -1;
             public short Field14 = -1;
@@ -273,11 +377,12 @@ public class PhysicalSkeleton : IFile
 
             public void Read(BINAReader reader)
             {
-                reader.Align(16);
+                reader.Align(8);
                 BoneName = reader.ReadStringTableEntry();
-                GravityFactor = reader.Read<float>();
-                Field0C = reader.Read<short>();
-                IsPinned = reader.Read<short>();
+                Mass = reader.Read<float>();
+                Unk0 = reader.Read<short>();
+                IsPinned = reader.Read<bool>();
+                reader.Align(2);
                 ChildID = reader.Read<short>();
                 ParentID = reader.Read<short>();
                 Field14 = reader.Read<short>();
@@ -288,11 +393,12 @@ public class PhysicalSkeleton : IFile
 
             public void Write(BINAWriter writer)
             {
-                writer.Align(16);
+                writer.Align(8);
                 writer.WriteStringTableEntry(BoneName);
-                writer.Write(GravityFactor);
-                writer.Write(Field0C);
+                writer.Write(Mass);
+                writer.Write(Unk0);
                 writer.Write(IsPinned);
+                writer.Align(2);
                 writer.Write(ChildID);
                 writer.Write(ParentID);
                 writer.Write(Field14);
@@ -307,12 +413,12 @@ public class PhysicalSkeleton : IFile
             }
         }
 
-        public struct Edge
+        public struct Link
         {
-            public short ID_A;
-            public short ID_B;
-            public float Field04;
-            public float Field08;
+            public short VertA;
+            public short VertB;
+            public float RestLength;
+            public float Stiffness;
         }
     }
 }
