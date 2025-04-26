@@ -123,7 +123,10 @@ mlevel.SaveToFile(filepath + ".mlevel");*/
 //CameraAnimation camAnim = new(filepath);
 //camAnim.SaveToFile(filepath + ".cam-anim");
 
-PhysicalSkeleton pba = new(filepath);
-pba.SaveToFile(filepath + ".pba");
+//PhysicalSkeleton pba = new(filepath);
+//pba.SaveToFile(filepath + ".pba");
+
+PAC pac = new(filepath);
+pac.SaveToFile(filepath + ".pac");
 
 Console.WriteLine("test");

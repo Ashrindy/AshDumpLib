@@ -271,7 +271,6 @@ public class ObjectWorld : IFile
         {
             writer.SetOffset(ObjectName + ID.ToString() + "params");
             Parameters.SetStructName(Parameters.GetTemplateData().objects[TypeName].structs);
-            Parameters.SetGedit(true);
             Parameters.Write(writer);
         }
 
@@ -325,7 +324,6 @@ public class ObjectWorld : IFile
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
                 long dataSize = writer.Position;
                 Parameters.SetStructName(TemplateData.tags[Name].structs);
-                Parameters.SetGedit(true);
                 Parameters.Write(writer);
                 dataSize = writer.Position - dataSize;
                 writer.WriteAt(dataSize, dataSizePtr);

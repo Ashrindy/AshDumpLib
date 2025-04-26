@@ -1,6 +1,8 @@
 ﻿using Amicitia.IO;
 using Amicitia.IO.Binary;
 using Amicitia.IO.Streams;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace AshDumpLib
@@ -13,6 +15,9 @@ namespace AshDumpLib
         public Dictionary<string, long> Offsets = new();
         public Dictionary<string, bool> OffsetsWrite = new();
         public Dictionary<string, long> OffsetValues = new();
+        public Dictionary<Type, Tuple<ExtendedBinaryWriter, MemoryStream>> arrays = new();
+        public Dictionary<Type, List<Tuple<string, long>>> arrayOffset = new();
+        public string CurFilePath = "";
 
         public int GenericOffset = 0;
         public int FileVersion = 0;
@@ -69,8 +74,7 @@ namespace AshDumpLib
 
         public void WriteNulls(int amount)
         {
-            for (int i = 0; i < amount; i++)
-                WriteChar('\0');
+            WriteArray(new byte[amount]);
         }
 
         
@@ -112,7 +116,7 @@ namespace AshDumpLib
             Offsets.Add(id, Position);
             OffsetValues.Add(id, 0);
             OffsetsWrite.Add(id, write);
-            this.Skip(4);
+            WriteNulls(8);
         }
 
         public long GetOffset(string id)
@@ -151,6 +155,66 @@ namespace AshDumpLib
         public virtual void FinishWrite()
         {
 
+        }
+
+        public virtual void WriteObjectArrayPtr<T>(List<T> values, string id) where T : IExtendedBinarySerializable
+        {
+            AddOffset(id);
+            ExtendedBinaryWriter writer;
+            if (arrays.ContainsKey(typeof(T)))
+                writer = arrays[typeof(T)].Item1;
+            else
+            {
+                MemoryStream stream = new();
+                writer = new(stream, StreamOwnership.Retain, Endianness);
+                arrays.Add(typeof(T), new(writer, stream));
+            }
+            long pos = writer.Position;
+            foreach (var i in values)
+                i.Write(writer);
+            if (arrayOffset.ContainsKey(typeof(T)))
+                arrayOffset[typeof(T)].Add(new(id, pos));
+            else
+                arrayOffset.Add(typeof(T), new() { new(id, pos) });
+        }
+
+        public virtual void WriteArrayPtr<T>(List<T> values, string id) where T : unmanaged
+        {
+            AddOffset(id);
+            ExtendedBinaryWriter writer;
+            if (arrays.ContainsKey(typeof(T)))
+                writer = arrays[typeof(T)].Item1;
+            else
+            {
+                MemoryStream stream = new();
+                writer = new(stream, StreamOwnership.Retain, Endianness);
+                arrays.Add(typeof(T), new(writer, stream));
+            }
+            long pos = writer.Position;
+            foreach (var i in values)
+                writer.Write(i);
+            if (arrayOffset.ContainsKey(typeof(T)))
+                arrayOffset[typeof(T)].Add(new(id, pos));
+            else
+                arrayOffset.Add(typeof(T), new() { new(id, pos) });
+        }
+
+        public virtual void FinishArrays()
+        {
+            foreach (var i in arrays)
+            {
+                i.Value.Item1.FinishArrays();
+                i.Value.Item1.Dispose();
+                long prePos = Position;
+                WriteArray(i.Value.Item2.ToArray());
+                long prePos1 = Position;
+                foreach(var x in arrayOffset[i.Key])
+                {
+                    Seek(prePos + x.Item2, SeekOrigin.Begin);
+                    SetOffset(x.Item1);
+                }
+                Seek(prePos1, SeekOrigin.Begin);
+            }
         }
     }
 }

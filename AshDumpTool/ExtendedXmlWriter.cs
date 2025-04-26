@@ -35,45 +35,48 @@ public class ExtendedXmlWriter
 
     public void Write<T>(string name, T value)
     {
-        if (typeof(T) == typeof(Vector2))
+        xmlWriter.WriteElementString(name, value.ToString());
+    }
+
+    public void Write(string name, Vector2 value)
+    {
+        WriteObject(name, () =>
         {
-            WriteObject(name, () =>
-            {
-                Write("X", ((Vector2)(object)value).X.ToString());
-                Write("Y", ((Vector2)(object)value).Y.ToString());
-            });
-        }
-        else if (typeof(T) == typeof(Vector3))
+            Write("X", value.X.ToString());
+            Write("Y", value.Y.ToString());
+        });
+    }
+
+    public void Write(string name, Vector3 value)
+    {
+        WriteObject(name, () =>
         {
-            WriteObject(name, () =>
-            {
-                Write("X", ((Vector3)(object)value).X.ToString());
-                Write("Y", ((Vector3)(object)value).Y.ToString());
-                Write("Z", ((Vector3)(object)value).Z.ToString());
-            });
-        }
-        else if (typeof(T) == typeof(Vector4))
+            Write("X", value.X.ToString());
+            Write("Y", value.Y.ToString());
+            Write("Z", value.Z.ToString());
+        });
+    }
+
+    public void Write(string name, Vector4 value)
+    {
+        WriteObject(name, () =>
         {
-            WriteObject(name, () =>
-            {
-                Write("X", ((Vector4)(object)value).X.ToString());
-                Write("Y", ((Vector4)(object)value).Y.ToString());
-                Write("Z", ((Vector4)(object)value).Z.ToString());
-                Write("W", ((Vector4)(object)value).W.ToString());
-            });
-        }
-        else if (typeof(T) == typeof(Quaternion))
+            Write("X", value.X.ToString());
+            Write("Y", value.Y.ToString());
+            Write("Z", value.Z.ToString());
+            Write("W", value.W.ToString());
+        });
+    }
+
+    public void Write(string name, Quaternion value)
+    {
+        WriteObject(name, () =>
         {
-            WriteObject(name, () =>
-            {
-                Write("X", ((Quaternion)(object)value).X.ToString());
-                Write("Y", ((Quaternion)(object)value).Y.ToString());
-                Write("Z", ((Quaternion)(object)value).Z.ToString());
-                Write("W", ((Quaternion)(object)value).W.ToString());
-            });
-        }
-        else
-            xmlWriter.WriteElementString(name, value.ToString());
+            Write("X", value.X.ToString());
+            Write("Y", value.Y.ToString());
+            Write("Z", value.Z.ToString());
+            Write("W", value.W.ToString());
+        });
     }
 
     public void WriteObject(string name, Action objectData)

@@ -1,5 +1,6 @@
 ﻿using AshDumpLib.HedgehogEngine.Archives;
 using AshDumpLib.HedgehogEngine.BINA.Animation;
+using AshDumpLib.HedgehogEngine.BINA.Converse;
 using AshDumpLib.HedgehogEngine.BINA.Density;
 using AshDumpLib.HedgehogEngine.BINA.RFL;
 using AshDumpLib.HedgehogEngine.BINA.Terrain;
@@ -27,6 +28,7 @@ public class Program
             hetable.AddRow("DensityPointCloud (.densitypointcloud)");
             //hetable.AddRow("Reflection (.rfl)");
             hetable.AddRow("ObjectWorld (.gedit)");
+            hetable.AddRow("TextMeta (.cnvrs-meta)");
             AnsiConsole.Write(hetable);
 
             var castleSiegetable = new Table();
@@ -42,7 +44,7 @@ public class Program
 
         foreach(var filepath in filepaths)
         {
-            if (Directory.Exists(filepath))
+            /*if (Directory.Exists(filepath))
             {
                 var pactable = new Table();
                 Console.Clear();
@@ -60,7 +62,7 @@ public class Program
                         rPac.parseFiles = false;
                         rPac.FilePath = filepath;
                         rPac.FileName = Path.GetFileName(filepath) + ".pac";
-                        rPac.Version = PAC.Version403;
+                        rPac.Version = PACV403.Version;
                         foreach (var i in Directory.GetFiles(filepath))
                         {
                             IFile x = new(i, File.ReadAllBytes(i));
@@ -82,7 +84,7 @@ public class Program
 
                     case "miller":
                         PAC mPac = new();
-                        mPac.Version = PAC.Version405;
+                        mPac.Version = PACV405.Version;
                         foreach (var i in Directory.GetFiles(filepath))
                         {
                             IFile x = new(i, File.ReadAllBytes(i));
@@ -107,7 +109,7 @@ public class Program
                         return;
                         break;
                 }
-            }
+            }*/
 
             switch (Path.GetExtension(filepath))
             {
@@ -196,6 +198,41 @@ public class Program
                             }
                             pcdensityW.SaveToFile(filepath.Replace(".xml", ".densitypointcloud"));
                             break;
+
+                        case "TextMeta":
+                            TextMeta textMetaW = new();
+                            textMetaW.Version = int.Parse(reader.DocumentElement.Attributes[0].Value);
+                            foreach(XmlNode i in reader.DocumentElement.FirstChild.ChildNodes)
+                            {
+                                TextMeta.TypeFace typeFace = new();
+                                typeFace.Name0 = i.Attributes[0].Value;
+                                typeFace.Name1 = i.Attributes[1].Value;
+                                typeFace.Unk0 = float.Parse(i.ChildNodes[0].InnerText);
+                                typeFace.Unk1 = float.Parse(i.ChildNodes[1].InnerText);
+                                typeFace.Unk2 = float.Parse(i.ChildNodes[2].InnerText);
+                                typeFace.Unk3 = float.Parse(i.ChildNodes[3].InnerText);
+                                foreach(XmlNode x in i.ChildNodes[4].ChildNodes)
+                                    typeFace.Parents.Add(x.InnerText);
+                                textMetaW.TypeFaces.Add(typeFace);
+                            }
+                            var iconData = reader.DocumentElement.LastChild;
+                            foreach (XmlNode x in iconData.FirstChild.ChildNodes)
+                            {
+                                TextMeta.IconData.Icon icon = new();
+                                icon.IconName = x.Attributes[0].InnerText;
+                                icon.ResourceName = x.Attributes[1].InnerText;
+                                icon.Unk0 = float.Parse(x.ChildNodes[0].InnerText);
+                                icon.Unk1 = float.Parse(x.ChildNodes[1].InnerText);
+                                icon.Unk2 = float.Parse(x.ChildNodes[2].InnerText);
+                                icon.Unk3 = float.Parse(x.ChildNodes[3].InnerText);
+                                XmlNode crop = x.ChildNodes[4];
+                                icon.ImageCrop = new() { Top = float.Parse(crop.ChildNodes[0].InnerText), Left = float.Parse(crop.ChildNodes[1].InnerText), Right = float.Parse(crop.ChildNodes[2].InnerText), Bottom = float.Parse(crop.ChildNodes[3].InnerText) };
+                                textMetaW.Images.Icons.Add(icon);
+                            }
+                            foreach (XmlNode x in iconData.LastChild.ChildNodes)
+                                textMetaW.Images.Resources.Add(x.InnerText);
+                            textMetaW.SaveToFile(filepath.Replace(".xml", ".cnvrs-meta"));
+                            break;
                     }
                     break;
 
@@ -250,7 +287,7 @@ public class Program
                         File.WriteAllBytes($"{filepath.Replace(Path.GetExtension(filepath), "")}/{i.FileName}", i.Data);
                     string dependencies = "";
                     foreach (var i in pAC.ParentPaths)
-                        dependencies += $"{i}\0";
+                        dependencies += $"{i}\n";
                     if (pAC.ParentPaths.Count > 0)
                         File.WriteAllText($"{filepath.Replace(Path.GetExtension(filepath), "")}/!DEPENDENCIES.txt", dependencies);
                     break;
@@ -316,6 +353,58 @@ public class Program
                 //    rflWriter.Write();
                 //    xmlRflWriter.Close();
                 //    break;
+
+                case ".cnvrs-meta":
+                    TextMeta textMeta = new(filepath);
+                    ExtendedXmlWriter textmetawriter = new(filepath.Replace(".cnvrs-meta", ".xml"), "TextMeta", new() { new("version", textMeta.Version) });
+                    textmetawriter.WriteObject("TypeFaces", () =>
+                    {
+                        foreach(var i in textMeta.TypeFaces)
+                        {
+                            textmetawriter.WriteObject("TypeFace", new() { new("Name0", i.Name0), new("Name1", i.Name1) }, () =>
+                            {
+                                textmetawriter.Write("Unk0", i.Unk0);
+                                textmetawriter.Write("Unk1", i.Unk1);
+                                textmetawriter.Write("Unk2", i.Unk2);
+                                textmetawriter.Write("Unk3", i.Unk3);
+                                textmetawriter.WriteObject("Parents", () =>
+                                {
+                                    foreach (var x in i.Parents)
+                                        textmetawriter.Write("Parent", x);
+                                });
+                            });
+                        }
+                    });
+                    textmetawriter.WriteObject("Images", () =>
+                    {
+                        textmetawriter.WriteObject("Icons", () =>
+                        {
+                            foreach(var i in textMeta.Images.Icons)
+                            {
+                                textmetawriter.WriteObject("Icon", new() { new("IconName", i.IconName), new("ResourceName", i.ResourceName) }, () =>
+                                {
+                                    textmetawriter.Write("Unk0", i.Unk0);
+                                    textmetawriter.Write("Unk1", i.Unk1);
+                                    textmetawriter.Write("Unk2", i.Unk2);
+                                    textmetawriter.Write("Unk3", i.Unk3);
+                                    textmetawriter.WriteObject("Crop", () =>
+                                    {
+                                        textmetawriter.Write("Top", i.ImageCrop.Top);
+                                        textmetawriter.Write("Left", i.ImageCrop.Left);
+                                        textmetawriter.Write("Right", i.ImageCrop.Right);
+                                        textmetawriter.Write("Bottom", i.ImageCrop.Bottom);
+                                    });
+                                });
+                            }
+                        });
+                        textmetawriter.WriteObject("Resources", () =>
+                        {
+                            foreach (var i in textMeta.Images.Resources)
+                                textmetawriter.Write("Resource", i);
+                        });
+                    });
+                    textmetawriter.Close();
+                    break;
 
                 case ".gedit":
                     Console.Clear();

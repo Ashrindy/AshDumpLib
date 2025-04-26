@@ -48,6 +48,14 @@ public class AnimWriter : ExtendedBinaryWriter
         StringTable += '\0';
     }
 
+    public override void AddOffset(string id, bool write = true)
+    {
+        Offsets.Add(id, Position);
+        OffsetValues.Add(id, 0);
+        OffsetsWrite.Add(id, write);
+        WriteNulls(4);
+    }
+
     public override void SetOffset(string id)
     {
         long offset = Position;
