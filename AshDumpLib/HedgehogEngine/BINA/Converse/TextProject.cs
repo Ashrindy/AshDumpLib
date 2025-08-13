@@ -212,7 +212,7 @@ public class TextProject : IFile
             {
                 public string IDName;
                 public string FontName;
-                public float? Unk0;
+                public float? DefaultSize;
                 public float? Unk1;
                 public float? Unk2;
                 public int? Unk3;
@@ -248,7 +248,7 @@ public class TextProject : IFile
                 {
                     Data.IDName = reader.ReadStringTableEntry();
                     Data.FontName = reader.ReadStringTableEntry();
-                    Data.Unk0 = ReadValue<float>(reader);
+                    Data.DefaultSize = ReadValue<float>(reader);
                     Data.Unk1 = ReadValue<float>(reader);
                     Data.Unk2 = ReadValue<float>(reader);
                     Data.Unk3 = ReadValue<int>(reader);
@@ -302,7 +302,7 @@ public class TextProject : IFile
                     writer.SetOffset(Data.IDName + Data.FontName + id);
                     writer.WriteStringTableEntry(Data.IDName);
                     writer.WriteStringTableEntry(Data.FontName);
-                    WriteValue(writer, "0", Data.Unk0);
+                    WriteValue(writer, "0", Data.DefaultSize);
                     WriteValue(writer, "1", Data.Unk1);
                     WriteValue(writer, "2", Data.Unk2);
                     WriteValue(writer, "3", Data.Unk3);
@@ -316,7 +316,7 @@ public class TextProject : IFile
                     WriteValue(writer, "11", Data.Unk11);
                     writer.WriteNulls(8);
 
-                    FinishWriteValue(writer, "0", Data.Unk0);
+                    FinishWriteValue(writer, "0", Data.DefaultSize);
                     FinishWriteValue(writer, "1", Data.Unk1);
                     FinishWriteValue(writer, "2", Data.Unk2);
                     FinishWriteValue(writer, "3", Data.Unk3);

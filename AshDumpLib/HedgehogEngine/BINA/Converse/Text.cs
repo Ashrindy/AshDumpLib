@@ -10,8 +10,14 @@ public class Text : IFile
 {
     public const string FileExtension = ".cnvrs-text";
 
-    public string Language = "en";
-    public byte unk0 = 6;
+    public enum TextVersion : byte
+    {
+        Forces = 3,
+        Frontiers, SXSG = 6
+    }
+
+    public string SheetName = "en";
+    public TextVersion Version = TextVersion.Frontiers;
     public byte unk1 = 1;
     public List<Entry> Entries = new();
 
@@ -26,20 +32,45 @@ public class Text : IFile
     public void Read(BINAReader reader)
     {
         reader.ReadHeader();
-        unk0 = reader.Read<byte>();
+        Version = reader.Read<TextVersion>();
         unk1 = reader.Read<byte>();
-        int amount = reader.Read<short>();
-        reader.Align(8);
-        long dataOffset = reader.Read<long>();
-        Language = reader.ReadStringTableEntry64();
-        long unk2 = reader.Read<long>();
-        reader.Jump(dataOffset, SeekOrigin.Begin);
+        reader.FileVersion = (int)Version;
 
-        for (int i = 0; i < amount; i++)
+        switch (Version)
         {
-            Entry entry = new();
-            entry.Read(reader);
-            Entries.Add(entry);
+            case TextVersion.Frontiers or TextVersion.SXSG:
+                int amount = reader.Read<short>();
+                reader.Align(8);
+                long dataOffset = reader.Read<long>();
+                SheetName = reader.ReadStringTableEntry64();
+                long unk2 = reader.Read<long>();
+                reader.Jump(dataOffset, SeekOrigin.Begin);
+
+                for (int i = 0; i < amount; i++)
+                {
+                    Entry entry = new();
+                    entry.Read(reader);
+                    Entries.Add(entry);
+                }
+                break;
+            case TextVersion.Forces:
+                reader.Align(8);
+                reader.ReadAtOffset(reader.Read<long>() + 64, () =>
+                {
+                    SheetName = reader.ReadStringTableEntry64();
+                    int amount = reader.Read<int>();
+                    reader.Align(8);
+                    reader.ReadAtOffset(reader.Read<long>() + 64, () =>
+                    {
+                        for (int i = 0; i < amount; i++)
+                        {
+                            Entry entry = new();
+                            entry.Read(reader);
+                            Entries.Add(entry);
+                        }
+                    });
+                });
+                break;
         }
 
         reader.Dispose();
@@ -48,39 +79,83 @@ public class Text : IFile
     public void Write(BINAWriter writer)
     {
         writer.WriteHeader();
-        writer.Write(unk0);
+        writer.Write(Version);
         writer.Write(unk1);
-        writer.Write((short)Entries.Count);
-        writer.Align(8);
-        writer.AddOffset("dataOffset");
-        writer.WriteStringTableEntry(Language);
-        writer.Write<long>(0);
-        writer.SetOffset("dataOffset");
+        writer.FileVersion = (int)Version;
 
-        foreach (var i in Entries)
-            i.Write(writer);
-
-        foreach (var i in Entries)
+        switch (Version)
         {
-            writer.SetOffset(i.Key + i.Text + i.Text.Length + i.ID);
-            byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
-            writer.WriteArray(textbytes);
-            writer.Align(8);
+            case TextVersion.Frontiers or TextVersion.SXSG:
+                {
+                    writer.Write((short)Entries.Count);
+                    writer.Align(8);
+                    writer.AddOffset("dataOffset");
+                    writer.WriteStringTableEntry(SheetName);
+                    writer.Write<long>(0);
+                    writer.SetOffset("dataOffset");
+
+                    foreach (var i in Entries)
+                        i.Write(writer);
+
+                    foreach (var i in Entries)
+                    {
+                        writer.SetOffset(i.Key + i.Text + i.Text.Length + i.ID);
+                        byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
+                        writer.WriteArray(textbytes);
+                        writer.Align(8);
+                    }
+
+                    Dictionary<string, long> alreadyWritten = new();
+                    foreach (var i in Entries)
+                    {
+                        writer.SetOffset(i.Key + i.Text + i.FontLayout.FontInfo.Data.FontName);
+                        i.FontLayout.EntryName = i.Key;
+                        i.FontLayout.Write(writer);
+                    }
+
+                    foreach (var i in Entries)
+                        i.FontLayout.FinishWrite(writer, ref alreadyWritten);
+
+                    foreach (var i in Entries)
+                        i.FinishWrite(writer);
+                    break; 
+                }
+
+            case TextVersion.Forces:
+                {
+                    writer.Align(8);
+                    writer.AddOffset("dataOffset");
+                    writer.SetOffset("dataOffset");
+                    writer.WriteStringTableEntry(SheetName);
+                    writer.Write(Entries.Count);
+                    writer.Align(8);
+                    writer.AddOffset("entriesOffset");
+                    writer.SetOffset("entriesOffset");
+
+                    foreach (var i in Entries)
+                        i.Write(writer);
+
+                    foreach (var i in Entries)
+                    {
+                        writer.SetOffset(i.Key + i.Text + i.Text.Length + i.ID);
+                        byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
+                        writer.WriteArray(textbytes);
+                        writer.Align(8);
+                    }
+
+                    Dictionary<string, long> alreadyWritten = new();
+                    foreach (var i in Entries)
+                    {
+                        writer.SetOffset(i.Key + i.Text + i.FontLayout.FontInfo.Data.FontName);
+                        i.FontLayout.EntryName = i.Key;
+                        i.FontLayout.Write(writer);
+                    }
+
+                    foreach (var i in Entries)
+                        i.FontLayout.FinishWrite(writer, ref alreadyWritten);
+                    break;
+                }
         }
-
-        Dictionary<string, long> alreadyWritten = new();
-        foreach (var i in Entries)
-        {
-            writer.SetOffset(i.Key + i.Text + i.FontLayout.FontInfo.Data.FontName);
-            i.FontLayout.EntryName = i.Key;
-            i.FontLayout.Write(writer);
-        }
-
-        foreach(var i in Entries)
-            i.FontLayout.FinishWrite(writer, ref alreadyWritten);
-
-        foreach (var i in Entries)
-            i.FinishWrite(writer);
 
         writer.FinishWrite();
         writer.Dispose();
@@ -88,7 +163,7 @@ public class Text : IFile
 
     public class Entry
     {
-        public long ID = 0;
+        public int ID = 0;
         public string Key = "";
         public string Text = "";
         public FontLayout FontLayout = new();
@@ -96,56 +171,81 @@ public class Text : IFile
 
         long id = Random.Shared.NextInt64();
 
-        public static long GenerateID(string text)
+        public static int GenerateID(string text)
         {
             int hash = 0;
             foreach(var i in text)
-            {
                 hash = (hash * 0x7F) + i;
-            }
             return hash;
         }
 
         public void Read(BINAReader reader)
         {
-            ID = reader.Read<long>();
+            ID = reader.Read<int>();
+            reader.Align(8);
             Key = reader.ReadStringTableEntry();
             FontLayout.Read(reader);
             long textPtr = reader.Read<long>();
-            long textLength = reader.Read<long>();
-            reader.ReadAtOffset(textPtr + 64, () =>
+            switch ((TextVersion)reader.FileVersion)
             {
-                byte[] textbytes = reader.ReadArray<byte>((int)textLength * 2);
-                Text = System.Text.Encoding.Unicode.GetString(textbytes);
-            });
-            long characterPtr = reader.Read<long>();
-            if (characterPtr != 0)
-            {
-                reader.ReadAtOffset(characterPtr + 64, () =>
-                {
-                    long charAmount = reader.Read<long>();
-                    long charsPtr = reader.Read<long>();
-                    reader.ReadAtOffset(charsPtr + 64, () =>
+                case TextVersion.Frontiers or TextVersion.SXSG:
+                    long textLength = reader.Read<long>();
+                    reader.ReadAtOffset(textPtr + 64, () =>
                     {
-                        for (int i = 0; i < charAmount; i++)
-                        {
-                            Character chara = new();
-                            chara.Read(reader);
-                            Characters.Add(chara);
-                        }
+                        byte[] textbytes = reader.ReadArray<byte>((int)textLength * 2);
+                        Text = System.Text.Encoding.Unicode.GetString(textbytes);
                     });
-                });
+                    long characterPtr = reader.Read<long>();
+                    if (characterPtr != 0)
+                    {
+                        reader.ReadAtOffset(characterPtr + 64, () =>
+                        {
+                            long charAmount = reader.Read<long>();
+                            long charsPtr = reader.Read<long>();
+                            reader.ReadAtOffset(charsPtr + 64, () =>
+                            {
+                                for (int i = 0; i < charAmount; i++)
+                                {
+                                    Character chara = new();
+                                    chara.Read(reader);
+                                    Characters.Add(chara);
+                                }
+                            });
+                        });
+                    }
+                    break;
+
+                case TextVersion.Forces:
+                    reader.ReadAtOffset(textPtr + 64, () =>
+                    {
+                        List<byte> chars = new List<byte>();
+                        bool continueRead = true;
+                        while (continueRead)
+                        {
+                            var newChars = reader.ReadArray<byte>(2);
+                            if (newChars[0] != '\0')
+                                chars.AddRange(newChars);
+                            else
+                                continueRead = false;
+                        }
+                        Text = System.Text.Encoding.Unicode.GetString(chars.ToArray());
+                    });
+                    break;
             }
         }
 
         public void Write(BINAWriter writer)
         {
             writer.Write(ID);
+            writer.Align(8);
             writer.WriteStringTableEntry(Key);
             writer.AddOffset(Key + Text + FontLayout.FontInfo.Data.FontName);
             writer.AddOffset(Key + Text + Text.Length + ID);
-            writer.Write((long)Text.Length);
-            writer.AddOffset(Key + Text + Characters.Count + ID + id);
+            if(writer.FileVersion == 6)
+            {
+                writer.Write((long)Text.Length);
+                writer.AddOffset(Key + Text + Characters.Count + ID + id);
+            }
         }
 
         public void FinishWrite(BINAWriter writer)
@@ -220,7 +320,7 @@ public class Text : IFile
                     {
                         Data.IDName = reader.ReadStringTableEntry();
                         Data.FontName = reader.ReadStringTableEntry();
-                        Data.Unk0 = ReadValue<float>(reader);
+                        Data.DefaultSize = ReadValue<float>(reader);
                         Data.Unk1 = ReadValue<float>(reader);
                         Data.Unk2 = ReadValue<float>(reader);
                         Data.Unk3 = ReadValue<int>(reader);
@@ -277,7 +377,7 @@ public class Text : IFile
                         writer.SetOffset(Data.IDName + Data.FontName + id);
                         writer.WriteStringTableEntry(Data.IDName);
                         writer.WriteStringTableEntry(Data.FontName);
-                        WriteValue(writer, "0", Data.Unk0);
+                        WriteValue(writer, "0", Data.DefaultSize);
                         WriteValue(writer, "1", Data.Unk1);
                         WriteValue(writer, "2", Data.Unk2);
                         WriteValue(writer, "3", Data.Unk3);
@@ -291,7 +391,7 @@ public class Text : IFile
                         WriteValue(writer, "11", Data.Unk11);
                         writer.WriteNulls(8);
 
-                        FinishWriteValue(writer, "0", Data.Unk0);
+                        FinishWriteValue(writer, "0", Data.DefaultSize);
                         FinishWriteValue(writer, "1", Data.Unk1);
                         FinishWriteValue(writer, "2", Data.Unk2);
                         FinishWriteValue(writer, "3", Data.Unk3);

@@ -1,5 +1,6 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using Amicitia.IO.Binary;
+using AshDumpLib.HedgehogEngine.BINA.Converse;
 
 namespace AshDumpLib.HedgehogEngine.BINA.Misc;
 
@@ -58,6 +59,12 @@ public class MasterLevel : IFile
 
     public class Level : IBINASerializable
     {
+        public override string ToString() => Name;
+
+        public override bool Equals(object? obj) => (obj is Level l) && l.Name == Name;
+
+        public override int GetHashCode() => (int)Text.Entry.GenerateID(Name);
+
         public struct File
         {
             public string Filepath;

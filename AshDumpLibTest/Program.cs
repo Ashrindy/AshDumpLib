@@ -13,9 +13,10 @@ using AshDumpLibTest;
 using System;
 using AshDumpLib.HedgehogEngine.BINA.Converse;
 using AshDumpLib.HedgehogEngine.BINA.ScalableFont;
+using AshDumpLib.HedgehogEngine.Mirage;
 
-Console.WriteLine("Hello, World!");
-string filepath = Console.ReadLine();
+/*Console.WriteLine("Hello, World!");
+string filepath = Console.ReadLine();*/
 //MaterialAnimation anim = new();
 //anim.MaterialName = "chr_supersonic2_fur";
 //Material mat = new();
@@ -108,8 +109,8 @@ meta.SaveToFile(filepath + ".cnvrs-meta");*/
 /*TextProject proj = new(filepath);
 proj.SaveToFile(filepath + ".cnvrs-proj");*/
 
-/*Text txt = new(filepath);
-txt.SaveToFile(filepath + ".cnvrs-text");*/
+//Text txt = new(filepath);
+//txt.SaveToFile(filepath + ".cnvrs-text");
 
 /*OpticalKerning okern = new(filepath);
 okern.SaveToFile(filepath + ".okern");*/
@@ -126,7 +127,69 @@ mlevel.SaveToFile(filepath + ".mlevel");*/
 //PhysicalSkeleton pba = new(filepath);
 //pba.SaveToFile(filepath + ".pba");
 
-PAC pac = new(filepath);
-pac.SaveToFile(filepath + ".pac");
+//PAC pac = new(filepath);
+//pac.SaveToFile(filepath + ".pac");
 
-Console.WriteLine("test");
+/*Console.WriteLine("Hello, World!");
+string filepath1 = Console.ReadLine();
+
+MasterLevel level = new(filepath);
+MasterLevel level1 = new(filepath1);
+MasterLevel revLevel = new();
+
+revLevel.Levels = level1.Levels.Except(level.Levels).ToList();
+
+revLevel.SaveToFile(filepath1 + "_revisited");*/
+
+public partial class Program
+{
+    public static void Main(string[] args)
+    {
+        string filepath;
+        if (args.Count() > 0) filepath = args[0];
+        else
+        {
+            Console.WriteLine("Filepath");
+            filepath = Console.ReadLine();
+        }
+
+        /*CameraAnimation camAnim = new(filepath);
+        foreach (var i in camAnim.Cameras)
+        {
+            i.FOV = (float)(2 * Math.Atan(Math.Tan(i.FOV / 2) / i.AspectRatio));
+            if (i.FrameInfos.Find(x => x.Type == CamFrameType.FOV) != null)
+            {
+                var frames = i.FrameInfos.Find(x => x.Type == CamFrameType.FOV).KeyFrames;
+                for (int f = 0; f < frames.Count; f++)
+                {
+                    var x = frames[f];
+                    x.Value = (float)(2 * Math.Atan(Math.Tan(x.Value / 2) / i.AspectRatio));
+                    frames[f] = x;
+                }
+            }
+        }
+        camAnim.SaveToFile(filepath);*/
+
+        if (Directory.Exists(filepath)) return;
+
+        PointCloud pcmodel = new(filepath);
+        var folderpath = filepath.Replace(".pcmodel", "");
+        Directory.CreateDirectory(folderpath);
+        foreach (var i in pcmodel.Points)
+        {
+            TerrainInstanceInfo tinfo = new();
+            tinfo.Name = i.InstanceName;
+            tinfo.ResourceName = i.ResourceName;
+            tinfo.Position = i.Position;
+            tinfo.Rotation = i.Rotation;
+            tinfo.Scale = i.Scale;
+            tinfo.SaveToFile(Path.Combine(folderpath, i.InstanceName + ".terrain-instanceinfo"));
+        }
+        
+    }
+}
+
+/*TerrainInstanceInfo trrinstinfo = new(filepath);
+trrinstinfo.SaveToFile(filepath + ".terrain-instanceinfo");
+
+Console.WriteLine("test");*/

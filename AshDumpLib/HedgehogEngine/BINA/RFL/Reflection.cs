@@ -169,7 +169,7 @@ public class ReflectionData
     }
     #endregion
 
-    int GetAlignment(StructTemplateField field, int fileVersion)
+    public int GetAlignment(StructTemplateField field, int fileVersion)
     {
         string subtype = "";
         string type = field.type;
@@ -619,11 +619,16 @@ public class ReflectionData
                 {
                     Random rnd = new();
                     long r = rnd.NextInt64();
-                    writer.AddOffset(Id.ToString() + field.name + "." + field.subtype + r.ToString());
-                    writer.Write((long)((object[])value).Length);
-                    writer.Write((long)((object[])value).Length);
-                    writer.WriteNulls(8);
-                    paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
+                    if(((object[])value).Length != 0)
+                    {
+                        writer.AddOffset(Id.ToString() + field.name + "." + field.subtype + r.ToString());
+                        writer.Write((long)((object[])value).Length);
+                        writer.Write((long)((object[])value).Length);
+                        writer.WriteNulls(8);
+                        paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
+                    }
+                    else
+                        writer.WriteNulls(32);
                 }
                 else
                 {

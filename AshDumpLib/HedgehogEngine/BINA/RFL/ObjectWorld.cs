@@ -87,6 +87,11 @@ public class ObjectWorld : IFile
         public List<Tag> Tags = new();
         public ReflectionData Parameters = new(TemplateData);
 
+        public override string ToString()
+        {
+            return $"{ObjectName} - {TypeName}";
+        }
+
         static int GetAlignment(ReflectionData.Template.StructTemplateField field, int fileVersion)
         {
             var template = TemplateData;
@@ -269,6 +274,7 @@ public class ObjectWorld : IFile
 
         public void FinishWrite(BINAWriter writer)
         {
+            writer.Align(16);
             writer.SetOffset(ObjectName + ID.ToString() + "params");
             Parameters.SetStructName(Parameters.GetTemplateData().objects[TypeName].structs);
             Parameters.Write(writer);

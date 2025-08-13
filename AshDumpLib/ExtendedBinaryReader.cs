@@ -66,7 +66,7 @@ public class ExtendedBinaryReader : BinaryObjectReader
     public virtual string ReadStringTableEntry64(bool useGenOffset = false)
     {
         long pointer = Read<long>();
-        if(pointer > 0)
+        if(pointer > 0 && pointer < mBlockSize)
         {
             if (useGenOffset)
                 pointer += genericOffset;
