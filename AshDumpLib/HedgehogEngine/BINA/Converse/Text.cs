@@ -18,7 +18,7 @@ public class Text : IFile
     }
 
     public TextVersion Version = TextVersion.Frontiers;
-    public List<Sheet> Sheets = new();
+    public List<Sheet> Sheets = new() { new() { Name = "New Sheet" } };
 
     public Text() { }
 
