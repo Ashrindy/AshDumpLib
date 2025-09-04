@@ -13,13 +13,12 @@ public class Text : IFile
     public enum TextVersion : byte
     {
         Forces = 3,
-        Frontiers, SXSG = 6
+        Frontiers = 6,
+        SXSG = 6
     }
 
-    public string SheetName = "en";
     public TextVersion Version = TextVersion.Frontiers;
-    public byte unk1 = 1;
-    public List<Entry> Entries = new();
+    public List<Sheet> Sheets = new();
 
     public Text() { }
 
@@ -33,7 +32,7 @@ public class Text : IFile
     {
         reader.ReadHeader();
         Version = reader.Read<TextVersion>();
-        unk1 = reader.Read<byte>();
+        byte sheetAmount = reader.Read<byte>();
         reader.FileVersion = (int)Version;
 
         switch (Version)
@@ -42,33 +41,42 @@ public class Text : IFile
                 int amount = reader.Read<short>();
                 reader.Align(8);
                 long dataOffset = reader.Read<long>();
-                SheetName = reader.ReadStringTableEntry64();
+                string sheetName = reader.ReadStringTableEntry64();
                 long unk2 = reader.Read<long>();
                 reader.Jump(dataOffset, SeekOrigin.Begin);
+
+                List<Entry> entries = new();
 
                 for (int i = 0; i < amount; i++)
                 {
                     Entry entry = new();
                     entry.Read(reader);
-                    Entries.Add(entry);
+                    entries.Add(entry);
                 }
+
+                Sheets.Add(new() { Name = sheetName, Entries = entries });
                 break;
             case TextVersion.Forces:
                 reader.Align(8);
                 reader.ReadAtOffset(reader.Read<long>() + 64, () =>
                 {
-                    SheetName = reader.ReadStringTableEntry64();
-                    int amount = reader.Read<int>();
-                    reader.Align(8);
-                    reader.ReadAtOffset(reader.Read<long>() + 64, () =>
+                    for (int x = 0; x < sheetAmount; x++)
                     {
-                        for (int i = 0; i < amount; i++)
+                        string sheetName = reader.ReadStringTableEntry64();
+                        int amount = reader.Read<short>();
+                        reader.Align(8);
+                        List<Entry> entries = new();
+                        reader.ReadAtOffset(reader.Read<long>() + 64, () =>
                         {
-                            Entry entry = new();
-                            entry.Read(reader);
-                            Entries.Add(entry);
-                        }
-                    });
+                            for (int i = 0; i < amount; i++)
+                            {
+                                Entry entry = new();
+                                entry.Read(reader);
+                                entries.Add(entry);
+                            }
+                        });
+                        Sheets.Add(new() { Name = sheetName, Entries = entries });
+                    }
                 });
                 break;
         }
@@ -80,24 +88,25 @@ public class Text : IFile
     {
         writer.WriteHeader();
         writer.Write(Version);
-        writer.Write(unk1);
+        writer.Write((byte)Sheets.Count);
         writer.FileVersion = (int)Version;
 
         switch (Version)
         {
             case TextVersion.Frontiers or TextVersion.SXSG:
                 {
-                    writer.Write((short)Entries.Count);
+                    var sheet = Sheets[0];
+                    writer.Write((short)sheet.Entries.Count);
                     writer.Align(8);
                     writer.AddOffset("dataOffset");
-                    writer.WriteStringTableEntry(SheetName);
+                    writer.WriteStringTableEntry(sheet.Name);
                     writer.Write<long>(0);
                     writer.SetOffset("dataOffset");
 
-                    foreach (var i in Entries)
+                    foreach (var i in sheet.Entries)
                         i.Write(writer);
 
-                    foreach (var i in Entries)
+                    foreach (var i in sheet.Entries)
                     {
                         writer.SetOffset(i.Key + i.Text + i.Text.Length + i.ID);
                         byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
@@ -106,17 +115,17 @@ public class Text : IFile
                     }
 
                     Dictionary<string, long> alreadyWritten = new();
-                    foreach (var i in Entries)
+                    foreach (var i in sheet.Entries)
                     {
                         writer.SetOffset(i.Key + i.Text + i.FontLayout.FontInfo.Data.FontName);
                         i.FontLayout.EntryName = i.Key;
                         i.FontLayout.Write(writer);
                     }
 
-                    foreach (var i in Entries)
+                    foreach (var i in sheet.Entries)
                         i.FontLayout.FinishWrite(writer, ref alreadyWritten);
 
-                    foreach (var i in Entries)
+                    foreach (var i in sheet.Entries)
                         i.FinishWrite(writer);
                     break; 
                 }
@@ -126,39 +135,56 @@ public class Text : IFile
                     writer.Align(8);
                     writer.AddOffset("dataOffset");
                     writer.SetOffset("dataOffset");
-                    writer.WriteStringTableEntry(SheetName);
-                    writer.Write(Entries.Count);
-                    writer.Align(8);
-                    writer.AddOffset("entriesOffset");
-                    writer.SetOffset("entriesOffset");
-
-                    foreach (var i in Entries)
-                        i.Write(writer);
-
-                    foreach (var i in Entries)
+                    foreach (var x in Sheets)
                     {
-                        writer.SetOffset(i.Key + i.Text + i.Text.Length + i.ID);
-                        byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
-                        writer.WriteArray(textbytes);
+                        writer.WriteStringTableEntry(x.Name);
+                        writer.Write(x.Entries.Count);
                         writer.Align(8);
+                        writer.AddOffset($"{x.GetHashCode()}entriesOffset");
                     }
+
+                    foreach (var x in Sheets)
+                    {
+                        writer.SetOffset($"{x.GetHashCode()}entriesOffset");
+                        foreach (var i in x.Entries)
+                            i.Write(writer);
+                    }
+                        
+                    foreach (var x in Sheets)
+                        foreach (var i in x.Entries)
+                        {
+                            writer.SetOffset(i.Key + i.Text + i.Text.Length + i.ID);
+                            byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
+                            writer.WriteArray(textbytes);
+                            writer.Align(8);
+                        }
 
                     Dictionary<string, long> alreadyWritten = new();
-                    foreach (var i in Entries)
-                    {
-                        writer.SetOffset(i.Key + i.Text + i.FontLayout.FontInfo.Data.FontName);
-                        i.FontLayout.EntryName = i.Key;
-                        i.FontLayout.Write(writer);
-                    }
+                    foreach (var x in Sheets)
+                        foreach (var i in x.Entries)
+                        {
+                            writer.SetOffset(i.Key + i.Text + i.FontLayout.FontInfo.Data.FontName);
+                            i.FontLayout.EntryName = i.Key;
+                            i.FontLayout.Write(writer);
+                        }
 
-                    foreach (var i in Entries)
-                        i.FontLayout.FinishWrite(writer, ref alreadyWritten);
+                    foreach (var x in Sheets)
+                        foreach (var i in x.Entries)
+                            i.FontLayout.FinishWrite(writer, ref alreadyWritten);
                     break;
                 }
         }
 
         writer.FinishWrite();
         writer.Dispose();
+    }
+
+    public struct Sheet
+    {
+        public string Name = "";
+        public List<Entry> Entries = new();
+
+        public Sheet() { }
     }
 
     public class Entry

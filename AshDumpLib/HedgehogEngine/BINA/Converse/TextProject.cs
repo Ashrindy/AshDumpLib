@@ -210,8 +210,8 @@ public class TextProject : IFile
         {
             public struct FontInfo
             {
-                public string IDName;
-                public string FontName;
+                public string IDName = "";
+                public string FontName = "";
                 public float? DefaultSize;
                 public float? Unk1;
                 public float? Unk2;
@@ -224,6 +224,8 @@ public class TextProject : IFile
                 public int? Unk9;
                 public int? Unk10;
                 public int? Unk11;
+
+                public FontInfo() { }
             }
 
             long id = Random.Shared.NextInt64();
@@ -341,7 +343,7 @@ public class TextProject : IFile
         {
             public struct LayoutInfo
             {
-                public string IDName;
+                public string IDName = "";
                 public float? Unk0;
                 public float? Unk1;
                 public int? Unk2;
@@ -351,6 +353,8 @@ public class TextProject : IFile
                 public int? Unk6;
                 public int? Unk7;
                 public int? Unk8;
+
+                public LayoutInfo() { }
             }
 
             long id = Random.Shared.NextInt64();
