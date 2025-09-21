@@ -14,9 +14,10 @@ using System;
 using AshDumpLib.HedgehogEngine.BINA.Converse;
 using AshDumpLib.HedgehogEngine.BINA.ScalableFont;
 using AshDumpLib.HedgehogEngine.Mirage;
+using AshDumpLib.HedgehogEngine.BINA.Density;
 
-/*Console.WriteLine("Hello, World!");
-string filepath = Console.ReadLine();*/
+Console.WriteLine("Hello, World!");
+string filepath = Console.ReadLine();
 //MaterialAnimation anim = new();
 //anim.MaterialName = "chr_supersonic2_fur";
 //Material mat = new();
@@ -141,7 +142,7 @@ revLevel.Levels = level1.Levels.Except(level.Levels).ToList();
 
 revLevel.SaveToFile(filepath1 + "_revisited");*/
 
-public partial class Program
+/*public partial class Program
 {
     public static void Main(string[] args)
     {
@@ -168,7 +169,7 @@ public partial class Program
                 }
             }
         }
-        camAnim.SaveToFile(filepath);*/
+        camAnim.SaveToFile(filepath);
 
         if (Directory.Exists(filepath)) return;
 
@@ -187,9 +188,12 @@ public partial class Program
         }
         
     }
-}
+}*/
 
 /*TerrainInstanceInfo trrinstinfo = new(filepath);
-trrinstinfo.SaveToFile(filepath + ".terrain-instanceinfo");
+trrinstinfo.SaveToFile(filepath + ".terrain-instanceinfo");*/
 
-Console.WriteLine("test");*/
+DensitySetting dSetting = new(filepath);
+dSetting.SaveToFile(filepath + ".densitysetting");
+
+Console.WriteLine("test");

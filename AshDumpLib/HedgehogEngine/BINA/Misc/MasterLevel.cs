@@ -68,7 +68,7 @@ public class MasterLevel : IFile
         public struct File
         {
             public string Filepath;
-            public string Root; //not sure, since all of them are "", i'm just assuming based on the nature of these types of file formats
+            public string ResourceType;
         }
 
         public string Name = "";
@@ -88,7 +88,7 @@ public class MasterLevel : IFile
                     for(int i = 0; i < fileCount; i++)
                         reader.ReadAtOffset(reader.Read<long>() + 64, () =>
                         {
-                            Files.Add(new() { Filepath = reader.ReadStringTableEntry(), Root = reader.ReadStringTableEntry() });
+                            Files.Add(new() { Filepath = reader.ReadStringTableEntry(), ResourceType = reader.ReadStringTableEntry() });
                         });
                 });
                 reader.ReadAtOffset(reader.Read<long>() + 64, () =>
@@ -100,6 +100,7 @@ public class MasterLevel : IFile
                         });
                 });
                 IsPublic = reader.Read<bool>();
+                //bool hasResources = reader.Read<bool>();
             });
         }
 
@@ -135,12 +136,12 @@ public class MasterLevel : IFile
             }
             writer.SetOffset($"{Name} files {Files.Count}");
             foreach (var i in Files)
-                writer.AddOffset($"{Name} {i.Filepath} {i.Root}");
+                writer.AddOffset($"{Name} {i.Filepath} {i.ResourceType}");
             foreach (var i in Files)
             {
-                writer.SetOffset($"{Name} {i.Filepath} {i.Root}");
+                writer.SetOffset($"{Name} {i.Filepath} {i.ResourceType}");
                 writer.WriteStringTableEntry(i.Filepath);
-                writer.WriteStringTableEntry(i.Root);
+                writer.WriteStringTableEntry(i.ResourceType);
                 writer.WriteNulls(8);
             }
         }

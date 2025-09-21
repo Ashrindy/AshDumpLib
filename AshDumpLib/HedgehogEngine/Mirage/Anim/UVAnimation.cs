@@ -183,5 +183,9 @@ public struct UVFrameInfo
 
 public enum UVFrameType
 {
-    PositionX = 0, PositionY = 1, Rotation = 2, ScaleX = 3, ScaleY = 4
+    PositionX = 0,
+    PositionY = 1,
+    Rotation = 2,
+    ScaleX = 3,
+    ScaleY = 4
 }

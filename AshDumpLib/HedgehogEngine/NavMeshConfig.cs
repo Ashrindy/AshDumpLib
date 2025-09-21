@@ -3,6 +3,8 @@ using System.Numerics;
 
 namespace AshDumpLib.HedgehogEngine;
 
+// NavMeshConfig is just https://recastnav.com/DetourNavMesh_8h_source.html - dtNavMesh
+
 public class NavMeshConfig : IFile
 {
     public const string FileExtension = ".nmc";
@@ -10,8 +12,9 @@ public class NavMeshConfig : IFile
 
     public int Version = 1;
     public Vector3 NavMeshSize = new(0, 0, 0);
-    public Vector2 Unk1 = new(0, 0);
-    public int NavMeshTileCount = 0;
+    public Vector2 TileSize = new(0, 0);
+    public int MaxTiles = 0;
+    public int MaxPolys = 0;
 
     public NavMeshConfig() { }
 
@@ -23,8 +26,9 @@ public class NavMeshConfig : IFile
         reader.ReadSignature(Signature);
         Version = reader.Read<int>();
         NavMeshSize = reader.Read<Vector3>();
-        Unk1 = reader.Read<Vector2>();
-        NavMeshTileCount = (int)reader.Read<long>();
+        TileSize = reader.Read<Vector2>();
+        MaxTiles = reader.Read<int>();
+        MaxPolys = reader.Read<int>();
         reader.Dispose();
     }
 
@@ -33,8 +37,9 @@ public class NavMeshConfig : IFile
         writer.WriteSignature(Signature);
         writer.Write(Version);
         writer.Write(NavMeshSize);
-        writer.Write(Unk1);
-        writer.Write((long)NavMeshTileCount);
+        writer.Write(TileSize);
+        writer.Write(MaxTiles);
+        writer.Write(MaxPolys);
         writer.Dispose();
     }
 }

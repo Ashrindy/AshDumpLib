@@ -230,5 +230,18 @@ public class CamFrameInfo
 
 public enum CamFrameType
 {
-    PositionX = 0, PositionY = 1, PositionZ = 2, RotationX = 3, RotationY = 4, RotationZ = 5, AimPositionX = 6, AimPositionY = 7, AimPositionZ = 8, Twist = 9, ZNear = 10, ZFar = 11, FOV = 12, AspectRatio = 13
+    PositionX = 0,
+    PositionY = 1,
+    PositionZ = 2,
+    RotationX = 3,
+    RotationY = 4,
+    RotationZ = 5,
+    AimPositionX = 6,
+    AimPositionY = 7,
+    AimPositionZ = 8,
+    Twist = 9,
+    ZNear = 10,
+    ZFar = 11,
+    FOV = 12,
+    AspectRatio = 13
 }

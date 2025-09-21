@@ -1,4 +1,5 @@
 ﻿using AshDumpLib.Helpers.Archives;
+using Amicitia.IO.Binary;
 
 namespace AshDumpLib.HedgehogEngine.BINA.Terrain;
 
@@ -50,6 +51,7 @@ public class TerrainMaterial : IFile
 
         public void Read(BINAReader reader)
         {
+            reader.Align(8);
             MaterialName = reader.ReadStringTableEntry();
             IDs = reader.ReadArray<int>(4);
             DetailDiffuseTextureName = reader.ReadStringTableEntry();
@@ -62,6 +64,7 @@ public class TerrainMaterial : IFile
 
         public void Write(BINAWriter writer)
         {
+            writer.Align(8);
             writer.WriteStringTableEntry(MaterialName);
             writer.WriteArray(IDs);
             writer.WriteStringTableEntry(DetailDiffuseTextureName);

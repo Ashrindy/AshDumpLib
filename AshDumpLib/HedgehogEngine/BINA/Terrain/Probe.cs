@@ -1,5 +1,6 @@
 ﻿using AshDumpLib.Helpers.Archives;
 using System.Numerics;
+using Amicitia.IO.Binary;
 
 namespace AshDumpLib.HedgehogEngine.BINA.Terrain;
 
@@ -52,6 +53,7 @@ public class Probe : IFile
 
         public void Read(BINAReader reader)
         {
+            reader.Align(8);
             Unk0 = reader.ReadArray<UnkStruct>(5);
             Name = reader.ReadStringTableEntry();
             Unk1 = reader.ReadArray<int>(8);
@@ -59,6 +61,7 @@ public class Probe : IFile
 
         public void Write(BINAWriter writer)
         {
+            writer.Align(8);
             writer.WriteArray(Unk0);
             writer.WriteStringTableEntry(Name);
             writer.WriteArray(Unk1);

@@ -40,7 +40,7 @@ namespace AshDumpLib
             Offsets.Add(rawEntry + "." + Position, Position - GenericOffset);
             string entry = rawEntry;
 
-            if (rawEntry == "")
+            if (rawEntry == "" && StringTable.Last() != '\0')
                 entry = "\0";
 
             if (!stringTableRaw.ContainsKey(entry))

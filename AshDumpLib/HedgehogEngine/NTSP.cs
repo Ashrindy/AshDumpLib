@@ -86,56 +86,51 @@ public class NTSP : IFile
         public short height;
         public string Name;
     }
+}
 
+public class NTSI : IFile
+{
+    public const string FileExtension = ".dds";
+    public const string Signature = "NTSI";
 
-    public class NTSI : IFile
+    public int Version = 1;
+    public string PackageName = "";
+    public int Mip4x4Index = 0;
+    public byte[] Mip4x4 = new byte[0];
+    public List<byte> DDSHeader = new();
+
+    public NTSI() { }
+
+    public NTSI(string filename) => Open(filename);
+    public NTSI(string filename, byte[] data) => Open(filename, data);
+
+    public override void Read(ExtendedBinaryReader reader)
     {
-        public const string FileExtension = ".dds";
-        public const string Signature = "NTSI";
-
-        public int Version = 1;
-        public byte[] ImageData = new byte[0];
-
-        public NTSI() { }
-
-        public NTSI(string filename) => Open(filename);
-        public NTSI(string filename, byte[] data) => Open(filename, data);
-
-        public override void Read(ExtendedBinaryReader reader)
-        {
-            reader.ReadSignature(Signature);
-            Version = reader.Read<int>();
-            reader.Skip(4);
-            int ntspNameLength = reader.Read<int>();
-            int unkDataSize = reader.Read<int>();
-            int unk = reader.Read<int>();
-            string ntspName = reader.ReadString(StringBinaryFormat.FixedLength, ntspNameLength);
-            NTSP ntsp = NTSPManager.GetNTSP(ntspName);
-            reader.Skip(unkDataSize);
-            List<byte> data = new();
-            while(reader.Position < Data.Length)
-                data.Add(reader.Read<byte>());
-            byte[] ntspData = ntsp.Textures.Find(x => x.Name == FileName.Replace("." + Extension, "")).Data;
-            data.AddRange(ntspData);
-            ImageData = data.ToArray();
-            reader.Dispose();
-        }
+        reader.ReadSignature(Signature);
+        Version = reader.Read<int>();
+        reader.Skip(4);
+        int ntspNameLength = reader.Read<int>();
+        int mip4x4size = reader.Read<int>();
+        Mip4x4Index = reader.Read<int>();
+        PackageName = reader.ReadString(StringBinaryFormat.FixedLength, ntspNameLength);
+        Mip4x4 = reader.ReadArray<byte>(mip4x4size);
+        List<byte> data = new();
+        while (reader.Position < Data.Length)
+            DDSHeader.Add(reader.Read<byte>());
+        reader.Dispose();
     }
 
-
-    public class NTSPManager
+    public override void Write(ExtendedBinaryWriter writer)
     {
-        public static string CurrentDirectory = "";
-        public static Dictionary<string, NTSP> LoadedNTSPs { get; private set; } = new();
-
-        public static NTSP GetNTSP(string ntspName)
-        {
-            if(LoadedNTSPs.ContainsKey(Path.Combine(CurrentDirectory, ntspName) + ".ntsp"))
-                return LoadedNTSPs[Path.Combine(CurrentDirectory, ntspName) + ".ntsp"];
-
-            NTSP ntsp = new(Path.Combine(CurrentDirectory, ntspName) + ".ntsp");
-            LoadedNTSPs.Add(Path.Combine(CurrentDirectory, ntspName) + ".ntsp", ntsp);
-            return ntsp;
-        }
+        writer.WriteSignature(Signature);
+        writer.Write(Version);
+        writer.WriteNulls(4);
+        writer.Write(PackageName.Length + 1);
+        writer.Write(Mip4x4.Length);
+        writer.Write(Mip4x4Index);
+        writer.WriteString(StringBinaryFormat.NullTerminated, PackageName);
+        writer.WriteArray(Mip4x4);
+        writer.WriteArray(DDSHeader.ToArray());
+        writer.Dispose();
     }
 }
