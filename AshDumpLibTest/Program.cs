@@ -15,6 +15,8 @@ using AshDumpLib.HedgehogEngine.BINA.Converse;
 using AshDumpLib.HedgehogEngine.BINA.ScalableFont;
 using AshDumpLib.HedgehogEngine.Mirage;
 using AshDumpLib.HedgehogEngine.BINA.Density;
+using AshDumpLib.HedgehogEngine.BINA;
+using Amicitia.IO.Binary;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
@@ -95,7 +97,7 @@ string filepath = Console.ReadLine();
 //Probe probe = new(filepath);
 //probe.SaveToFile(filepath + "1");
 
-//PAC pac = new(filepath);
+PAC pac = new(filepath);
 //pac.SaveToFile(filepath + ".pac");
 //PAC pac2 = new(filepath + ".pac");
 
@@ -154,46 +156,53 @@ revLevel.SaveToFile(filepath1 + "_revisited");*/
             filepath = Console.ReadLine();
         }
 
-        /*CameraAnimation camAnim = new(filepath);
-        foreach (var i in camAnim.Cameras)
+        DensitySetting setting = new(filepath);
+        string result = "";
+        foreach(var i in setting.LODGroups)
         {
-            i.FOV = (float)(2 * Math.Atan(Math.Tan(i.FOV / 2) / i.AspectRatio));
-            if (i.FrameInfos.Find(x => x.Type == CamFrameType.FOV) != null)
-            {
-                var frames = i.FrameInfos.Find(x => x.Type == CamFrameType.FOV).KeyFrames;
-                for (int f = 0; f < frames.Count; f++)
-                {
-                    var x = frames[f];
-                    x.Value = (float)(2 * Math.Atan(Math.Tan(x.Value / 2) / i.AspectRatio));
-                    frames[f] = x;
-                }
-            }
+            if (i.LODGroupReferenceCount == 0) continue;
+
+            result += $"{setting.LODGroups.IndexOf(i)}: {setting.Models[setting.LODGroupReferences[i.LODGroupReferenceOffset].ModelIndex].Name} - {setting.CollisionResourceNames[(int)setting.CollisionDatas[i.CollisionDataIndex1].CollisionReferenceOffset]}\n";
         }
-        camAnim.SaveToFile(filepath);
 
-        if (Directory.Exists(filepath)) return;
-
-        PointCloud pcmodel = new(filepath);
-        var folderpath = filepath.Replace(".pcmodel", "");
-        Directory.CreateDirectory(folderpath);
-        foreach (var i in pcmodel.Points)
+        string arearesult = "";
+        foreach (var i in setting.Biomes)
         {
-            TerrainInstanceInfo tinfo = new();
-            tinfo.Name = i.InstanceName;
-            tinfo.ResourceName = i.ResourceName;
-            tinfo.Position = i.Position;
-            tinfo.Rotation = i.Rotation;
-            tinfo.Scale = i.Scale;
-            tinfo.SaveToFile(Path.Combine(folderpath, i.InstanceName + ".terrain-instanceinfo"));
+            if (i.BiomeReferenceCount == 0) continue;
+            var biomeReference = setting.BiomeReferences[i.BiomeReferenceOffset];
+            var lodGroup = setting.LODGroups[biomeReference.Index];
+
+            arearesult += $"{setting.Biomes.IndexOf(i)}: {setting.Models[setting.LODGroupReferences[lodGroup.LODGroupReferenceOffset].ModelIndex].Name} - scaleMin: {biomeReference.Scale.X}; scaleMax: {biomeReference.Scale.Y}; probability: {biomeReference.Probability}\n";
         }
-        
+
+        File.WriteAllText(filepath + ".txt", result);
+        File.WriteAllText(filepath + "_area.txt", arearesult);
     }
 }*/
 
 /*TerrainInstanceInfo trrinstinfo = new(filepath);
 trrinstinfo.SaveToFile(filepath + ".terrain-instanceinfo");*/
 
-DensitySetting dSetting = new(filepath);
-dSetting.SaveToFile(filepath + ".densitysetting");
+/*DensitySetting dSetting = new(filepath);
+dSetting.SaveToFile(filepath + ".densitysetting");*/
 
-Console.WriteLine("test");
+//DensityPointCloud dpc0 = new(filepath);
+/*DensityPointCloud dpc1 = new(filepath + "d");
+/*foreach (var i in dpc0.FoliagePoints)
+{
+    var z = dpc1.FoliagePoints.Find(x => x == i);
+    if (z != null)
+        z.Flags = i.Flags;
+}
+
+dpc1.SaveToFile(filepath + "d");
+
+Console.WriteLine("test");*/
+
+/*BINAWriter file = new("titlemovie.rfl", Amicitia.IO.Binary.Endianness.Little, System.Text.Encoding.UTF8);
+file.WriteHeader();
+file.Write(false);
+file.Align(8);
+file.WriteNulls(16 * 8);
+file.FinishWrite();
+file.Dispose();*/

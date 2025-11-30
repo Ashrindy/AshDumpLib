@@ -48,4 +48,11 @@ public static class Helpers
         };
 
     }
+
+    public static bool NearlyEquals(this Vector3 a, Vector3 b, float epsilon = 1e-5f)
+    {
+        return Math.Abs(a.X - b.X) < epsilon &&
+               Math.Abs(a.Y - b.Y) < epsilon &&
+               Math.Abs(a.Z - b.Z) < epsilon;
+    }
 }

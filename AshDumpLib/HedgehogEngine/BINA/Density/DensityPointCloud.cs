@@ -47,8 +47,10 @@ public class DensityPointCloud : IFile
 
         writer.Write(Version);
         writer.Write((long)2);
+        writer.Align(8);
         writer.AddOffset("dataOffset");
         writer.Write(FoliagePoints.Count);
+        writer.Align(8);
         writer.SetOffset("dataOffset");
         foreach (var i in FoliagePoints)
             i.Write(writer);
@@ -64,6 +66,7 @@ public class DensityPointCloud : IFile
         public Quaternion Rotation = new(0, 0, 0, 1);
         public Vector3 Scale = new(1, 1, 1);
         public int Unk = 0;
+        public int Flags = 0;
 
         public void Read(BINAReader reader)
         {
@@ -75,7 +78,8 @@ public class DensityPointCloud : IFile
             reader.Skip(16);
             Unk = reader.Read<int>();
             ID = reader.Read<int>();
-            reader.Skip(12);
+            Flags = reader.Read<int>();
+            reader.Skip(8);
         }
 
         public void Write(BINAWriter writer)
@@ -88,12 +92,26 @@ public class DensityPointCloud : IFile
             writer.WriteNulls(16);
             writer.Write(Unk);
             writer.Write(ID);
-            writer.WriteNulls(12);
+            writer.Write(Flags);
+            writer.WriteNulls(8);
         }
 
         public void FinishWrite(BINAWriter writer)
         {
             throw new NotImplementedException();
         }
+
+        public static bool operator ==(FoliagePoint a, FoliagePoint b)
+        {
+            return a.Position.NearlyEquals(b.Position) &&
+                   a.Scale.NearlyEquals(b.Scale) &&
+                   a.ID == b.ID;
+        }
+
+        public static bool operator !=(FoliagePoint a, FoliagePoint b)
+        {
+            return !(a == b);
+        }
+
     }
 }
