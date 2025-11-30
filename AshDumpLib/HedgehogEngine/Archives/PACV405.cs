@@ -77,11 +77,11 @@ public class PACV405
             PACV402 split = new();
             List<byte> uncompressedData = new();
             reader.Seek(i.dataPos, SeekOrigin.Begin);
-            if (i.chunks.Count() > 0 && i.chunks[0].uncompressedSize == 0) 
+            if (i.chunks.Count() > 0 && i.chunks[0].uncompressedSize == 0)
             {
                 uncompressedData.AddRange(reader.ReadArray<byte>(i.compressedSize));
             }
-            else 
+            else
             {
                 foreach (var x in i.chunks)
                 {
@@ -89,6 +89,7 @@ public class PACV405
                     LZ4Codec.Decode(reader.ReadArray<byte>(x.compressedSize), 0, x.compressedSize, uncompressed, 0, x.uncompressedSize);
                     uncompressedData.AddRange(uncompressed);
                 }
+            }
             //File.WriteAllBytes($"{reader.CurFilePath}.{rootPac.Dependencies.IndexOf(i)}", uncompressedData.ToArray());
             MemoryStream stream = new(uncompressedData.ToArray());
             ExtendedBinaryReader splitReader = new(stream, Amicitia.IO.Streams.StreamOwnership.Retain, Endianness.Little);
