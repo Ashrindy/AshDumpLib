@@ -87,10 +87,7 @@ public class ObjectWorld : IFile
         public List<Tag> Tags = new();
         public ReflectionData Parameters = new(TemplateData);
 
-        public override string ToString()
-        {
-            return $"{ObjectName} - {TypeName}";
-        }
+        public override string ToString() => $"{ObjectName} - {TypeName}";
 
         static int GetAlignment(ReflectionData.Template.StructTemplateField field, int fileVersion)
         {
@@ -299,10 +296,14 @@ public class ObjectWorld : IFile
                     long dataPtr = reader.Read<long>();
                     reader.ReadAtOffset(dataPtr + 64, () =>
                     {
-                        if (Parameters.GetTemplateData().tags != null)
-                        {
+                        if (Parameters.GetTemplateData().tags != null && Parameters.GetTemplateData().tags.Count > 0) {
                             Parameters.SetStructName(Parameters.GetTemplateData().tags[Name].structs);
                             Parameters.Read(reader);
+                        }
+                        else if (Name == "RangeSpawning") {
+                            Parameters.SetStructName("RangeSpawning");
+                            Parameters.Parameters.Add("rangeIn", reader.Read<float>());
+                            Parameters.Parameters.Add("rangeOut", reader.Read<float>());
                         }
                     });
                 });
@@ -321,16 +322,20 @@ public class ObjectWorld : IFile
 
             public void FinishWrite(BINAWriter writer)
             {
-                Dictionary<string, object> tempParam = new()
-                {
-                    { TemplateData.tags[Name].structs, Parameters.Parameters.ElementAt(0).Value }
-                };
-                Parameters.Parameters = tempParam;
-                writer.Align(GetAlignment(Parameters.GetTemplateData().structs[Parameters.Parameters.ElementAt(0).Key].fields[0], writer.FileVersion));
+                if (Parameters.GetTemplateData().tags != null && Parameters.GetTemplateData().tags.Count > 0)
+                    writer.Align(GetAlignment(Parameters.GetTemplateData().structs[Parameters.GetStructName()].fields[0], writer.FileVersion));
+                else
+                    writer.Align(4);
                 writer.SetOffset(Owner.ObjectName + Owner.ID.ToString() + Name + "data");
                 long dataSize = writer.Position;
-                Parameters.SetStructName(TemplateData.tags[Name].structs);
-                Parameters.Write(writer);
+                if (Parameters.GetTemplateData().tags != null && Parameters.GetTemplateData().tags.Count > 0) {
+                    Parameters.SetStructName(TemplateData.tags[Name].structs);
+                    Parameters.Write(writer);
+                }
+                else if (Name == "RangeSpawning") {
+                    writer.Write((float)Parameters.Parameters["rangeIn"]);
+                    writer.Write((float)Parameters.Parameters["rangeOut"]);
+                }
                 dataSize = writer.Position - dataSize;
                 writer.WriteAt(dataSize, dataSizePtr);
             }
@@ -377,8 +382,14 @@ public class ObjectWorld : IFile
 
         libHSON.Object obj = new(i.ID, i.ObjectName, i.TypeName, position: i.Position, rotation: Helpers.ToQuaternion(i.Rotation), parent: parentObj);
         ParameterCollection tags = new();
-        foreach (var x in i.Tags)
-            tags = CreateHsonParameterCollection(x.Parameters.Parameters);
+        if (i.Parameters.GetTemplateData().tags != null && i.Parameters.GetTemplateData().tags.Count > 0)
+            foreach (var x in i.Tags)
+                tags = CreateHsonParameterCollection(x.Parameters.Parameters);
+        else {
+            ParameterCollection rangeSpawningTags = new();
+            rangeSpawningTags = CreateHsonParameterCollection(i.Tags[0].Parameters.Parameters);
+            tags.Add("RangeSpawning", new(rangeSpawningTags));
+        }
         obj.LocalParameters.Add("tags", new(tags));
         Dictionary<string, object> param = GeditToHsonParams(i.Parameters.Parameters);
         CreateHsonParameterCollection(param, ref obj.LocalParameters);
@@ -511,7 +522,8 @@ public class ObjectWorld : IFile
     {
         ObjectWorld gedit = new();
         foreach (var i in project.Objects)
-            gedit.Objects.Add(CreateGeditObject(i));
+            if (!i.IsExcluded)
+                gedit.Objects.Add(CreateGeditObject(i));
         return gedit;
     }
 
@@ -526,18 +538,32 @@ public class ObjectWorld : IFile
         obj.Rotation = Helpers.ToEulerAngles(i.LocalRotation);
         obj.OffsetPosition = i.LocalPosition;
         obj.OffsetRotation = Helpers.ToEulerAngles(i.LocalRotation);
-        foreach (var x in i.LocalParameters["tags"].ValueObject)
-        {
-            Object.Tag tag = new() { Name = x.Key };
+        if (TemplateData.tags != null && TemplateData.tags.Count > 0) {
+            foreach (var x in i.LocalParameters["tags"].ValueObject)
+            {
+                Object.Tag tag = new() { Name = x.Key };
+                tag.Parameters = new(TemplateData);
+                tag.Parameters.Parameters = CreateGeditParameter(new(TemplateData.tags[tag.Name].structs, x.Value), TemplateData.tags[tag.Name].structs);
+                tag.Owner = obj;
+                obj.Tags.Add(tag);
+            }
+        }
+        else {
+            Object.Tag tag = new() { Name = "RangeSpawning" };
             tag.Parameters = new(TemplateData);
-            tag.Parameters.Parameters = CreateGeditParameter(new(TemplateData.tags[tag.Name].structs, x.Value), TemplateData.tags[tag.Name].structs);
+            tag.Parameters.SetStructName("RangeSpawning");
+            tag.Parameters.Parameters = new();
+            var param = i.LocalParameters["tags"].ValueObject["RangeSpawning"].ValueObject;
+            tag.Parameters.Parameters.Add("rangeIn", (float)param["rangeIn"].ValueFloatingPoint);
+            tag.Parameters.Parameters.Add("rangeOut", (float)param["rangeOut"].ValueFloatingPoint);
             tag.Owner = obj;
             obj.Tags.Add(tag);
         }
         obj.Parameters = new(TemplateData);
         i.LocalParameters.Remove("tags");
         i.LocalParameters = ConvertHSONToGedit(i.LocalParameters, TemplateData.objects[obj.TypeName].structs);
-        obj.Parameters.Parameters = CreateGeditParameter(new(TemplateData.objects[obj.TypeName].structs, new(i.LocalParameters)), TemplateData.objects[obj.TypeName].structs);
+        obj.Parameters.SetStructName(TemplateData.objects[obj.TypeName].structs);
+        obj.Parameters.Parameters = (Dictionary<string, object>)CreateGeditParameterObject(new(TemplateData.objects[obj.TypeName].structs, new(i.LocalParameters)), TemplateData.objects[obj.TypeName].structs);
         obj.Parameters.Parameters = (Dictionary<string, object>)obj.Parameters.Parameters.ElementAt(0).Value;
         return obj;
     }

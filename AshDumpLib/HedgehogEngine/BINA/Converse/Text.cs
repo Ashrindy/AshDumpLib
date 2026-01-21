@@ -30,6 +30,7 @@ public class Text : IFile
 
     public void Read(BINAReader reader)
     {
+        Sheets.Clear();
         reader.ReadHeader();
         Version = reader.Read<TextVersion>();
         byte sheetAmount = reader.Read<byte>();
@@ -246,13 +247,23 @@ public class Text : IFile
                     {
                         List<byte> chars = new List<byte>();
                         bool continueRead = true;
+                        bool specialSymbol = false;
                         while (continueRead)
                         {
                             var newChars = reader.ReadArray<byte>(2);
-                            if (newChars[0] != '\0')
-                                chars.AddRange(newChars);
-                            else
+
+                            if (newChars[0] != 0 && (newChars[1] & 0xE0) == 0xE0)
+                                specialSymbol = true;
+
+                            if (newChars[0] == '\0' && !specialSymbol)
                                 continueRead = false;
+                            else if (newChars[0] == '\0' && specialSymbol)
+                            {
+                                chars.AddRange(newChars);
+                                specialSymbol = false;
+                            }
+                            else
+                                chars.AddRange(newChars);
                         }
                         Text = System.Text.Encoding.Unicode.GetString(chars.ToArray());
                     });

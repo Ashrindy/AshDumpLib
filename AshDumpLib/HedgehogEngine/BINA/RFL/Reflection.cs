@@ -45,6 +45,7 @@ public class ReflectionData
     }
 
     public void SetStructName(string structName) => StructName = structName;
+    public string GetStructName() => StructName;
     public TemplateJSON GetTemplateData() { return TemplateData; }
 
     public void Read(BINAReader reader)
@@ -56,18 +57,18 @@ public class ReflectionData
             reader.Skip(4);
         }
         if (TemplateData.tags != null && TemplateData.tags.ContainsKey(StructName))
-            Parameters.Add(StructName, ReadStruct(reader, TemplateData.structs[TemplateData.tags[StructName].structs]));
+            Parameters = ReadStruct(reader, TemplateData.structs[TemplateData.tags[StructName].structs]);
         else if(TemplateData.objects != null && TemplateData.objects.ContainsKey(StructName))
-            Parameters.Add(TemplateData.objects[StructName].structs, ReadStruct(reader, TemplateData.structs[TemplateData.objects[StructName].structs]));
+            Parameters = ReadStruct(reader, TemplateData.structs[TemplateData.objects[StructName].structs]);
         else
-            Parameters.Add(StructName, ReadStruct(reader, TemplateData.structs[StructName]));
+            Parameters = ReadStruct(reader, TemplateData.structs[StructName]);
     }
 
     public void Write(BINAWriter writer)
     {
         if (Parameters.Count > 0)
         {
-            WriteStruct(writer, (Dictionary<string, object>)Parameters.ElementAt(0).Value, Parameters.ElementAt(0).Key);
+            WriteStruct(writer, Parameters, StructName);
             foreach (var i in paramArrays)
             {
                 writer.SetOffset(Id.ToString() + i.Key.Item1 + i.Key.Item2.ToString());
@@ -195,8 +196,12 @@ public class ReflectionData
                     align = 4;
                     break;
 
-                case "string" or "uint64" or "int64" or "float64":
+                case "uint64" or "int64" or "float64":
                     align = 8;
+                    break;
+
+                case "string":
+                    align = GetTemplateData().format == "sobj_v2" ? 4 : 8;
                     break;
 
                 case "flags":
@@ -204,7 +209,7 @@ public class ReflectionData
                     break;
 
                 case "object_reference":
-                    if (fileVersion == 2)
+                    if (fileVersion == 2 || GetTemplateData().format == "sobj_v2")
                         align = 4;
                     else if (fileVersion == 3)
                         align = 8;
@@ -212,7 +217,7 @@ public class ReflectionData
 
                 case "array":
                     if (field.array_size == null)
-                        align = 8;
+                        align = GetTemplateData().format == "sobj_v2" ? 4 : 8;
                     else
                         align = GetAlignment(new() { alignment = null, type = subtype }, fileVersion);
                     break;
@@ -341,7 +346,7 @@ public class ReflectionData
 
             case "string":
                 value = reader.ReadStringTableEntry();
-                reader.Skip(8);
+                reader.Skip(reader.GetPointerSize());
                 break;
 
 
@@ -353,10 +358,11 @@ public class ReflectionData
                     long arrayLength = 0;
                     if (field.array_size == null)
                     {
-                        arrayPtr = reader.Read<long>();
-                        arrayLength = reader.Read<long>();
-                        long arrayLength2 = reader.Read<long>();
-                        reader.Skip(8);
+                        arrayPtr = reader.ReadPointer();
+                        arrayLength = reader.ReadPointer();
+                        long arrayLength2 = reader.ReadPointer();
+                        if (GetTemplateData().format != "sobj_v2")
+                            reader.Skip(reader.GetPointerSize());
                         if (arrayLength > 0 && arrayPtr > 0)
                         {
                             arrayValue = new object[arrayLength];
@@ -385,7 +391,10 @@ public class ReflectionData
                 break;
 
             case "object_reference":
-                value = reader.Read<Guid>();
+                if (GetTemplateData().format == "gedit_v3")
+                    value = reader.Read<Guid>();
+                else
+                    value = reader.Read<int>();
                 break;
 
             case "vector2":
@@ -611,7 +620,7 @@ public class ReflectionData
 
             case "string":
                 writer.WriteStringTableEntry((string)value);
-                writer.WriteNulls(8);
+                writer.WriteNulls(writer.GetPointerSize());
                 break;
 
             case "array":
@@ -622,13 +631,14 @@ public class ReflectionData
                     if(((object[])value).Length != 0)
                     {
                         writer.AddOffset(Id.ToString() + field.name + "." + field.subtype + r.ToString());
-                        writer.Write((long)((object[])value).Length);
-                        writer.Write((long)((object[])value).Length);
-                        writer.WriteNulls(8);
+                        writer.WritePointer(((object[])value).Length);
+                        writer.WritePointer(((object[])value).Length);
+                        if (GetTemplateData().format != "sobj_v2")
+                            writer.WriteNulls(8);
                         paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
                     }
                     else
-                        writer.WriteNulls(32);
+                        writer.WriteNulls(writer.GetPointerSize() * 3 + GetTemplateData().format != "sobj_v2" ? 8 : 0);
                 }
                 else
                 {
@@ -638,10 +648,10 @@ public class ReflectionData
                 break;
 
             case "object_reference":
-                if (writer.FileVersion == 3)
+                if (GetTemplateData().format == "gedit_v3")
                     writer.Write((Guid)value);
-                else if (writer.FileVersion == 2)
-                    writer.WriteArray(new byte[4] { ((Guid)value).ToByteArray()[0], ((Guid)value).ToByteArray()[1], ((Guid)value).ToByteArray()[2], ((Guid)value).ToByteArray()[3] });
+                else
+                    writer.Write((int)value);
                 break;
 
             case "vector2":
@@ -744,9 +754,11 @@ public class ReflectionData
     {
         if (TemplateData.structs[strName].parent != null)
             WriteStruct(writer, (Dictionary<string, object>)str[TemplateData.structs[strName].parent], TemplateData.structs[strName].parent);
-        int start = str.Keys.ToList().IndexOf(TemplateData.structs[strName].fields[0].name);
-        for (int i = start; i < str.Count; i++)
-            WriteField(writer, TemplateData.structs[strName].fields[i - start], str.ElementAt(i).Value);
+        if (TemplateData.structs[strName].fields.Length > 0) {
+            int start = str.Keys.ToList().IndexOf(TemplateData.structs[strName].fields[0].name);
+            for (int i = start; i < str.Count; i++)
+                WriteField(writer, TemplateData.structs[strName].fields[i - start], str.ElementAt(i).Value);
+        }
     }
     #endregion
 

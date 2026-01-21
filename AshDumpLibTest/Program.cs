@@ -1,22 +1,24 @@
 ﻿// See https://aka.ms/new-console-template for more information
 //using AshDumpLib.CastleSiege;
 //using AshDumpLib.HedgehogEngine.Archives;
+using Amicitia.IO.Binary;
+using AshDumpLib.HedgehogEngine.Archives;
+using AshDumpLib.HedgehogEngine.BINA;
+using AshDumpLib.HedgehogEngine.BINA.Animation;
+using AshDumpLib.HedgehogEngine.BINA.Converse;
+using AshDumpLib.HedgehogEngine.BINA.Density;
+using AshDumpLib.HedgehogEngine.BINA.Misc;
+using AshDumpLib.HedgehogEngine.BINA.RFL;
+using AshDumpLib.HedgehogEngine.BINA.ScalableFont;
+using AshDumpLib.HedgehogEngine.BINA.SetData;
+using AshDumpLib.HedgehogEngine.BINA.Terrain;
+using AshDumpLib.HedgehogEngine.Mirage;
 using AshDumpLib.HedgehogEngine.Mirage.Anim;
 using AshDumpLib.HedgehogEngine.Needle;
-using AshDumpLib.HedgehogEngine.BINA.RFL;
-using AshDumpLib.HedgehogEngine.BINA.Animation;
-using AshDumpLib.HedgehogEngine.BINA.Terrain;
-using AshDumpLib.HedgehogEngine.BINA.Misc;
-using AshDumpLib.HedgehogEngine.Archives;
 using AshDumpLib.Helpers.Archives;
 using AshDumpLibTest;
 using System;
-using AshDumpLib.HedgehogEngine.BINA.Converse;
-using AshDumpLib.HedgehogEngine.BINA.ScalableFont;
-using AshDumpLib.HedgehogEngine.Mirage;
-using AshDumpLib.HedgehogEngine.BINA.Density;
-using AshDumpLib.HedgehogEngine.BINA;
-using Amicitia.IO.Binary;
+using static AshDumpLib.HedgehogEngine.BINA.RFL.ReflectionData;
 
 Console.WriteLine("Hello, World!");
 string filepath = Console.ReadLine();
@@ -97,7 +99,8 @@ string filepath = Console.ReadLine();
 //Probe probe = new(filepath);
 //probe.SaveToFile(filepath + "1");
 
-PAC pac = new(filepath);
+//PAC pac = new(filepath);
+
 //pac.SaveToFile(filepath + ".pac");
 //PAC pac2 = new(filepath + ".pac");
 
@@ -206,3 +209,12 @@ file.Align(8);
 file.WriteNulls(16 * 8);
 file.FinishWrite();
 file.Dispose();*/
+
+/*SOBJLW.TemplateData = ReflectionData.Template.GetTemplateFromFilePath("R:\\HedgeLibSXSG\\HedgeLib\\Templates\\lostworld.json");
+libHSON.Project hson = new();
+hson.Load(filepath);
+SOBJLW sobjlw = SOBJLW.ToSOBJ(hson);
+sobjlw.SaveToFile(filepath + ".orc");*/
+SOBJLW sobjlw = new(filepath, "R:\\HedgeLib\\Templates\\lostworld.json");
+File.WriteAllText(filepath.Replace(".orc", ".hson"), sobjlw.ToHsonString());
+Console.WriteLine("test");

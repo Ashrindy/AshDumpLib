@@ -10,7 +10,7 @@ namespace AshDumpLib
     public class ExtendedBinaryWriter : BinaryObjectWriter
     {
         public Dictionary<long, long> StringTableOffsets = new();
-        Dictionary<string, long> stringTableRaw = new();
+        protected Dictionary<string, long> stringTableRaw = new();
         public string StringTable = "";
         public Dictionary<string, long> Offsets = new();
         public Dictionary<string, bool> OffsetsWrite = new();
@@ -18,6 +18,7 @@ namespace AshDumpLib
         public Dictionary<Type, Tuple<ExtendedBinaryWriter, MemoryStream>> arrays = new();
         public Dictionary<Type, List<Tuple<string, long>>> arrayOffset = new();
         public string CurFilePath = "";
+        public bool Bit64 = true;
 
         public int GenericOffset = 0;
         public int FileVersion = 0;
@@ -53,7 +54,10 @@ namespace AshDumpLib
 
                 //Writes the temporary offset in the StringTable
                 stringTableRaw.Add(entry, StringTable.Length);
-                Write<long>(StringTable.Length);
+
+                if (Bit64) Write<long>(StringTable.Length);
+                else Write(StringTable.Length);
+
                 foreach (var i in entry.ToCharArray())
                     StringTable += i;
 
@@ -68,7 +72,8 @@ namespace AshDumpLib
                 OffsetsWrite.Add(entry + "." + Position, true);
 
                 //Writes the temporary offset in the StringTable
-                Write<long>(stringTableRaw[entry]);
+                if (Bit64) Write<long>(stringTableRaw[entry]);
+                else Write((int)stringTableRaw[entry]);
             }
         }
 

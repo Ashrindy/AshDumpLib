@@ -10,7 +10,7 @@ namespace AshDumpLib.HedgehogEngine.BINA;
 public class BINAWriter : ExtendedBinaryWriter
 {
     public const string BINASignature = "BINA";
-    public const string BINAVersion = "210";
+    public string BINAVersion = "210";
     public const string BlockSignature = "DATA";
 
     public int RelativeDataOffset = 24;
@@ -42,7 +42,10 @@ public class BINAWriter : ExtendedBinaryWriter
     {
         long offset = Position;
         Seek(Offsets[id] + GenericOffset, SeekOrigin.Begin);
-        Write(offset - GenericOffset);
+        if (Bit64)
+            Write(offset - GenericOffset);
+        else
+            Write((int)(offset - GenericOffset));
         OffsetValues[id] = offset;
         Seek(offset, SeekOrigin.Begin);
     }
@@ -110,7 +113,7 @@ public class BINAWriter : ExtendedBinaryWriter
                 }
                 else if (i.GetType() == typeof(string))
                 {
-                    this.Align(8);
+                    FixPadding(GetPointerSize());
                     WriteStringTableEntry((string)i);
                 }
                 else if (i.GetType() == typeof(Int16))
@@ -133,7 +136,7 @@ public class BINAWriter : ExtendedBinaryWriter
             }
         }
 
-        this.Align(4);
+        FixPadding(4);
         //We save the current position as StringTableOffset here so we can quickly jump back and also write it in the BINA header
         int stringTableOffset = (int)Position;
 
@@ -141,9 +144,12 @@ public class BINAWriter : ExtendedBinaryWriter
         foreach (var i in StringTableOffsets)
         {
             Seek(i.Key, SeekOrigin.Begin);
-            Write(i.Value + stringTableOffset - GenericOffset);
+            if (Bit64)
+                Write(i.Value + stringTableOffset - GenericOffset);
+            else
+                Write((int)(i.Value + stringTableOffset - GenericOffset));
         }
-        
+
         //Now we write the StringTableOffset in the BINA header
         Seek(stringTableOffsetPos, SeekOrigin.Begin);
         Write(stringTableOffset - GenericOffset);
@@ -211,13 +217,23 @@ public class BINAWriter : ExtendedBinaryWriter
         Write(offsetTableSize);
     }
 
+    public void WritePointer(long ptr) {
+        if (Bit64) Write(ptr);
+        else Write((int)ptr);
+    }
+
+    public int GetPointerSize() {
+        if (Bit64) return 8;
+        else return 4;
+    }
+
     public override void AddOffset(string id, bool write = true)
     {
         Offsets.Add(id, Position - GenericOffset);
         OffsetValues.Add(id, 0);
         OffsetsWrite.Add(id, write);
         if(write)
-            this.Skip(8);
+            this.Skip(GetPointerSize());
     }
 
     public void WriteBINAArray<T>(List<T> list, string id, bool write = true)
@@ -227,13 +243,13 @@ public class BINAWriter : ExtendedBinaryWriter
             if (list.Count > 0)
             {
                 Write(list.Count);
-                this.Align(8);
+                this.Align(GetPointerSize());
             }
             else
             {
                 WriteNulls(4);
-                this.Align(8);
-                WriteNulls(8);
+                this.Align(GetPointerSize());
+                WriteNulls(GetPointerSize());
             }
         }
 
@@ -259,13 +275,13 @@ public class BINAWriter : ExtendedBinaryWriter
             if (isOffsetFirst)
             {
                 AddOffset(id);
-                this.Align(8);
+                this.Align(GetPointerSize());
                 Write((long)list.Count);
             }
             else
             {
                 Write((long)list.Count);
-                this.Align(8);
+                this.Align(GetPointerSize());
                 AddOffset(id);
             }
             List<object> li = new();
@@ -277,7 +293,7 @@ public class BINAWriter : ExtendedBinaryWriter
                 arrays.Add(id, li);
         }
         else
-            WriteNulls(16);
+            WriteNulls(GetPointerSize() + 8);
     }
 
     public void WriteBINAStringArray64(List<string> list, string id)
@@ -285,7 +301,7 @@ public class BINAWriter : ExtendedBinaryWriter
         if (list.Count > 0)
         {
             Write((long)list.Count);
-            this.Align(8);
+            this.Align(GetPointerSize());
             AddOffset(id);
             List<object> li = new();
             foreach (var i in list)
@@ -293,6 +309,6 @@ public class BINAWriter : ExtendedBinaryWriter
             arrays.Add(id, li);
         }
         else
-            WriteNulls(16);
+            WriteNulls(GetPointerSize() + 8);
     }
 }

@@ -16,7 +16,7 @@ public interface IBINASerializable
 public class BINAReader : ExtendedBinaryReader
 {
     public const string BINASignature = "BINA";
-    public const string BINAVersion = "210";
+    public string BINAVersion = "210";
     public int FileSize;
     public const string BlockSignature = "DATA";
     public int BlockSize;
@@ -77,10 +77,20 @@ public class BINAReader : ExtendedBinaryReader
         this.Skip(RelativeDataOffset);
     }
 
+    public long ReadPointer() {
+        if (Bit64) return Read<long>();
+        else return Read<int>();
+    }
+
+    public int GetPointerSize() {
+        if (Bit64) return 8;
+        else return 4;
+    }
+
     public override string ReadStringTableEntry(bool useGenOffset = false, bool dontCheckForZeroes = false)
     {
         //Reads the string table pointer
-        long pointer = Read<long>();
+        long pointer = ReadPointer();
         if (useGenOffset)
             pointer += genericOffset;
 
@@ -110,7 +120,7 @@ public class BINAReader : ExtendedBinaryReader
         List<T> list = new();
         long count = Read<int>();
         this.Align(8);
-        long offset = Read<long>();
+        long offset = ReadPointer();
         ReadAtOffset(offset + 64, () =>
         {
             for (int i = 0; i < count; i++)
@@ -130,12 +140,12 @@ public class BINAReader : ExtendedBinaryReader
         long count = 0;
         List<T> list = new();
         if (offsetFirst)
-            offset = Read<long>();
+            offset = ReadPointer();
         else
             count = Read<long>();
         this.Align(8);
         if (!offsetFirst)
-            offset = Read<long>();
+            offset = ReadPointer();
         else
             count = Read<long>();
         ReadAtOffset(offset + 64, () =>
@@ -156,7 +166,7 @@ public class BINAReader : ExtendedBinaryReader
         List<T> list = new();
         long count = Read<int>();
         this.Align(8);
-        long offset = Read<long>();
+        long offset = ReadPointer();
         ReadAtOffset(offset + 64, () =>
         {
             for (int i = 0; i < count; i++)
@@ -171,7 +181,7 @@ public class BINAReader : ExtendedBinaryReader
         List<string> list = new();
         long count = Read<int>();
         this.Align(8);
-        long offset = Read<long>();
+        long offset = ReadPointer();
         ReadAtOffset(offset + 64, () =>
         {
             for (int i = 0; i < count; i++)
@@ -186,7 +196,7 @@ public class BINAReader : ExtendedBinaryReader
         List<string> list = new();
         long count = Read<long>();
         this.Align(8);
-        long offset = Read<long>();
+        long offset = ReadPointer();
         ReadAtOffset(offset + 64, () =>
         {
             for (int i = 0; i < count; i++)

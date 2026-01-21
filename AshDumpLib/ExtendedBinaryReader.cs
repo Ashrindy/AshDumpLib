@@ -20,6 +20,7 @@ public class ExtendedBinaryReader : BinaryObjectReader
     public string Signature = "";
     public int FileVersion = 0;
     public string CurFilePath = "";
+    public bool Bit64 = true;
 
     public ExtendedBinaryReader(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
     {
