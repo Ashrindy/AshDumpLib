@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+    <PackageReference Include="libHSON" Version="1.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
   </ItemGroup>
@@ -27,7 +28,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Amicitia.IO\src\Amicitia.IO\Amicitia.IO.csproj" />
-    <ProjectReference Include="D:\libHSON-csharp\libHSON\libHSON.csproj" />
   </ItemGroup>
 
 </Project>
