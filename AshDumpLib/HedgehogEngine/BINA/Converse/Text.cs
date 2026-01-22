@@ -156,6 +156,10 @@ public class Text : IFile
                         {
                             writer.SetOffset(i.Key + i.Text + i.Text.Length + i.ID);
                             byte[] textbytes = System.Text.Encoding.Unicode.GetBytes(i.Text);
+                            var textbyteslist = textbytes.ToList();
+                            textbyteslist.Add(0);
+                            textbyteslist.Add(0);
+                            textbytes = textbyteslist.ToArray();
                             writer.WriteArray(textbytes);
                             writer.Align(8);
                         }
