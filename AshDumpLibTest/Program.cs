@@ -215,6 +215,62 @@ libHSON.Project hson = new();
 hson.Load(filepath);
 SOBJLW sobjlw = SOBJLW.ToSOBJ(hson);
 sobjlw.SaveToFile(filepath + ".orc");*/
-SOBJLW sobjlw = new(filepath, "R:\\HedgeLib\\Templates\\lostworld.json");
-File.WriteAllText(filepath.Replace(".orc", ".hson"), sobjlw.ToHsonString());
-Console.WriteLine("test");
+/*SOBJLW sobjlw = new(filepath, "R:\\HedgeLib\\Templates\\lostworld.json");
+File.WriteAllText(filepath.Replace(".orc", ".hson"), sobjlw.ToHsonString());*/
+/*ObjectWorld gedit = new(filepath, "R:\\HedgeLib-HedgeLib-\\build\\Debug\\templates\\hite.json");
+File.WriteAllText(filepath.Replace(".gedit", ".hson"), gedit.ToHsonString());
+Console.WriteLine("test");*/
+
+// Convert terrain instances to pcmodel
+/*PointCloud pcmodel = new(filepath);
+string directory = Path.GetDirectoryName(filepath);
+foreach (var i in pcmodel.Points)
+{
+    TerrainInstanceInfo instanceInfo = new();
+    instanceInfo.Name = i.InstanceName;
+    instanceInfo.ResourceName = i.ResourceName;
+    instanceInfo.Position = i.Position;
+    instanceInfo.Rotation = i.Rotation;
+    instanceInfo.Scale = i.Scale;
+    instanceInfo.SaveToFile(Path.Combine(directory, instanceInfo.Name + TerrainInstanceInfo.FileExtension));
+}*/
+
+// Port standalone .lights to pcrt
+/*
+string[] filepaths = Directory.GetFiles(filepath);
+PointCloud pcrt = new();
+
+foreach (var i in filepaths)
+{
+    if (Path.GetExtension(i) != ".light")
+        continue;
+
+    Light light = new(i);
+    if (light.LightType == Light.Type.Point)
+    {
+        PointCloud.Point point = new();
+        point.Position = light.PointProps.Position;
+        point.InstanceName = Path.GetFileNameWithoutExtension("rt_" + light.FileName);
+        point.ResourceName = point.InstanceName;
+        point.Scale = new(light.PointProps.Range.W*5);
+        pcrt.Points.Add(point);
+
+        light.Version = 2;
+        light.PointProps.Position = new(0, 0, 0);
+        light.PointProps.ShadowEnabled = true;
+        light.SaveToFile(Path.Combine(filepath, point.InstanceName + ".light"));
+    }
+}
+
+pcrt.SaveToFile(Path.Combine(filepath, "main_lights.pcrt"));*/
+
+// Convert forces shlf to frontiers lf
+/*SHLightField shlf = new(filepath);
+foreach (var i in shlf.Nodes)
+{
+    i.Position /= 10;
+    i.Scale /= 10;
+}
+shlf.SaveToFile(filepath.Replace(".shlf", "_lf.lf"));*/
+
+PAC pac = new(filepath);

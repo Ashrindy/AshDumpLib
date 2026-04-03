@@ -91,6 +91,10 @@ public class BINAReader : ExtendedBinaryReader
     {
         //Reads the string table pointer
         long pointer = ReadPointer();
+
+        if (pointer == 0)
+            return "";
+
         if (useGenOffset)
             pointer += genericOffset;
 

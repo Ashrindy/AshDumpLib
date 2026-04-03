@@ -17,6 +17,8 @@ public class AnimWriter : ExtendedBinaryWriter
 
     public int Version = 2;
     public AnimType AnimationType = AnimType.CameraAnimation;
+    public bool HasStringTable = true;
+    public bool AddUnknownOffset = true;
 
     public AnimWriter(string filePath, Endianness endianness, Encoding encoding) : base(filePath, endianness, encoding)
     {
@@ -87,20 +89,23 @@ public class AnimWriter : ExtendedBinaryWriter
 
     public override void FinishWrite()
     {
-        //Sets the string table offset
-        SetOffset("strings");
+        if (HasStringTable)
+        {
+            //Sets the string table offset
+            SetOffset("strings");
 
-        //Writes the string table
-        foreach (var i in StringTable)
-            WriteChar(i);
+            //Writes the string table
+            foreach (var i in StringTable)
+                WriteChar(i);
 
-        FixPadding(4);
+            FixPadding(4);
 
-        //Gets string size by subtracting the current position from the string table pointer
-        int stringSize = (int)Position - GenericOffset - (int)GetOffsetValue("strings");
+            //Gets string size by subtracting the current position from the string table pointer
+            int stringSize = (int)Position - GenericOffset - (int)GetOffsetValue("strings");
 
-        //Writes string size
-        WriteAt(stringSize, GetOffset("strings") + 4);
+            //Writes string size
+            WriteAt(stringSize, GetOffset("strings") + 4);
+        }
 
         //Gets data size by getting the position with the generic offset subtracted
         int dataSize = (int)Position - GenericOffset;
@@ -117,9 +122,12 @@ public class AnimWriter : ExtendedBinaryWriter
         //Saves the offset amount position
         AddOffset("offsetsCount", false);
 
-        //Writes some offsets that I have no idea where they come from
-        for (int x = 0; x < 24; x += 4)
-            Write(x);
+        if (AddUnknownOffset)
+        {
+            //Writes some offsets that I have no idea where they come from
+            for (int x = 0; x < 24; x += 4)
+                Write(x);
+        }
 
         //Writes offsets
         foreach (var i in Offsets)

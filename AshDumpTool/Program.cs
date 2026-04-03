@@ -233,6 +233,20 @@ public class Program
                                 textMetaW.Images.Resources.Add(x.InnerText);
                             textMetaW.SaveToFile(filepath.Replace(".xml", ".cnvrs-meta"));
                             break;
+
+                        case "Reflection":
+                            Console.Clear();
+                            Console.WriteLine("What is the template?");
+                            string templateName = Console.ReadLine();
+                            string rflClass = reader.DocumentElement.FirstChild.Name;
+                            ReflectionReader reflReader = new(reader, rflClass, templateName);
+                            Reflection refl = new();
+                            refl.Parameters = reflReader.GetReflectionData();
+                            refl.RFLName = rflClass;
+                            Reflection.TemplateFilePath = templateName;
+                            refl.SaveToFile(filepath.Replace(".xml", ".rfl"));
+                            break;
+                            
                     }
                     break;
 
@@ -341,18 +355,19 @@ public class Program
                     pcdensitywriter.Close();
                     break;
 
-                //case ".rfl":
-                //    Console.Clear();
-                //    Console.WriteLine("What is the template?");
-                //    string template = Console.ReadLine();
-                //    Console.WriteLine("What is the RFLClass name?");
-                //    string rflClassName = Console.ReadLine();
-                //    Reflection rfl = new(filepath, template, rflClassName);
-                //    ExtendedXmlWriter xmlRflWriter = new(filepath.Replace(".rfl", ".xml"));
-                //    ReflectionWriter rflWriter = new(xmlRflWriter, rfl.Parameters);
-                //    rflWriter.Write();
-                //    xmlRflWriter.Close();
-                //    break;
+                case ".rfl":
+                    Console.Clear();
+                    Console.WriteLine("What is the template?");
+                    string template = Console.ReadLine();
+                    Console.WriteLine("What is the RFLClass name?");
+                    string rflClassName = Console.ReadLine();
+                    Reflection rfl = new(filepath, template, rflClassName);
+                    rfl.SaveToFile(filepath + ".rfl");
+                    ExtendedXmlWriter xmlRflWriter = new(filepath.Replace(".rfl", ".xml"));
+                    ReflectionWriter rflWriter = new(xmlRflWriter, rfl.Parameters);
+                    rflWriter.Write();
+                    xmlRflWriter.Close();
+                    break;
 
                 case ".cnvrs-meta":
                     TextMeta textMeta = new(filepath);

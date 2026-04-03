@@ -1,6 +1,5 @@
 ﻿using Amicitia.IO.Binary;
 using AshDumpLib.Helpers.Archives;
-using Newtonsoft.Json.Linq;
 using static AshDumpLib.HedgehogEngine.BINA.Converse.TextProject.LanguageSettings.Font;
 using static AshDumpLib.HedgehogEngine.BINA.Converse.TextProject.LanguageSettings.Layout;
 
@@ -17,7 +16,44 @@ public class Text : IFile
         SXSG = 6
     }
 
+    public enum TextLanguage : byte
+    {
+        de,
+        en,
+        en_rough,
+        es,
+        fr,
+        it,
+        ja,
+        ko,
+        pl,
+        pt,
+        ru,
+        th,
+        zh,
+        zhs
+    }
+
+    public enum TextLanguageRangers : byte
+    {
+        de,
+        en,
+        en_rough,
+        es,
+        fr,
+        it,
+        ja,
+        ko,
+        pl,
+        pt,
+        ru,
+        zh,
+        zhs
+    }
+
     public TextVersion Version = TextVersion.Frontiers;
+    public TextLanguage Language = TextLanguage.en;
+
     public List<Sheet> Sheets = new() { new() { Name = "New Sheet" } };
 
     public Text() { }
@@ -33,12 +69,12 @@ public class Text : IFile
         Sheets.Clear();
         reader.ReadHeader();
         Version = reader.Read<TextVersion>();
-        byte sheetAmount = reader.Read<byte>();
         reader.FileVersion = (int)Version;
 
         switch (Version)
         {
             case TextVersion.Frontiers or TextVersion.SXSG:
+                Language = reader.Read<TextLanguage>();
                 int amount = reader.Read<short>();
                 reader.Align(8);
                 long dataOffset = reader.Read<long>();
@@ -58,6 +94,7 @@ public class Text : IFile
                 Sheets.Add(new() { Name = sheetName, Entries = entries });
                 break;
             case TextVersion.Forces:
+                byte sheetAmount = reader.Read<byte>();
                 reader.Align(8);
                 reader.ReadAtOffset(reader.Read<long>() + 64, () =>
                 {
@@ -89,13 +126,13 @@ public class Text : IFile
     {
         writer.WriteHeader();
         writer.Write(Version);
-        writer.Write((byte)Sheets.Count);
         writer.FileVersion = (int)Version;
 
         switch (Version)
         {
             case TextVersion.Frontiers or TextVersion.SXSG:
                 {
+                    writer.Write(Language);
                     var sheet = Sheets[0];
                     writer.Write((short)sheet.Entries.Count);
                     writer.Align(8);
@@ -133,6 +170,7 @@ public class Text : IFile
 
             case TextVersion.Forces:
                 {
+                    writer.Write((byte)Sheets.Count);
                     writer.Align(8);
                     writer.AddOffset("dataOffset");
                     writer.SetOffset("dataOffset");

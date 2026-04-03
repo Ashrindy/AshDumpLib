@@ -176,7 +176,7 @@ public class ReflectionData
         string type = field.type;
         if (field.array_size != null)
         {
-            subtype = type;
+            subtype = field.subtype;
             type = "array";
         }
         if (field.alignment == null)
@@ -356,29 +356,19 @@ public class ReflectionData
                 {
                     long arrayPtr = 0;
                     long arrayLength = 0;
-                    if (field.array_size == null)
+                    arrayPtr = reader.ReadPointer();
+                    arrayLength = reader.ReadPointer();
+                    long arrayLength2 = reader.ReadPointer();
+                    if (GetTemplateData().format != "sobj_v2")
+                        reader.Skip(reader.GetPointerSize());
+                    if (arrayLength > 0 && arrayPtr > 0)
                     {
-                        arrayPtr = reader.ReadPointer();
-                        arrayLength = reader.ReadPointer();
-                        long arrayLength2 = reader.ReadPointer();
-                        if (GetTemplateData().format != "sobj_v2")
-                            reader.Skip(reader.GetPointerSize());
-                        if (arrayLength > 0 && arrayPtr > 0)
-                        {
-                            arrayValue = new object[arrayLength];
-                            reader.ReadAtOffset(arrayPtr + 64, () =>
-                            {
-                                for (int i = 0; i < arrayLength; i++)
-                                    arrayValue[i] = ReadField(reader, field.subtype, field, parent);
-                            });
-                        }
-                    }
-                    else
-                    {
-                        arrayLength = (int)field.array_size;
                         arrayValue = new object[arrayLength];
-                        for (int i = 0; i < arrayLength; i++)
-                            arrayValue[i] = ReadField(reader, field.subtype, field, parent);
+                        reader.ReadAtOffset(arrayPtr + 64, () =>
+                        {
+                            for (int i = 0; i < arrayLength; i++)
+                                arrayValue[i] = ReadField(reader, field.subtype, field, parent);
+                        });
                     }
                 }
                 else
@@ -577,7 +567,7 @@ public class ReflectionData
         string type = field.type;
         if (field.array_size != null)
         {
-            subtype = field.type;
+            subtype = field.subtype;
             type = "array";
         }
         switch (type)
@@ -638,7 +628,13 @@ public class ReflectionData
                         paramArrays.Add(new(field.name + "." + field.subtype, r), (object[])value);
                     }
                     else
-                        writer.WriteNulls(writer.GetPointerSize() * 3 + GetTemplateData().format != "sobj_v2" ? 8 : 0);
+                    {
+                        writer.WriteNulls(writer.GetPointerSize());
+                        writer.WriteNulls(writer.GetPointerSize());
+                        writer.WriteNulls(writer.GetPointerSize());
+                        if (GetTemplateData().format != "sobj_v2")
+                            writer.WriteNulls(8);
+                    }
                 }
                 else
                 {

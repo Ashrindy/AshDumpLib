@@ -1,4 +1,5 @@
 ﻿using AshDumpLib.HedgehogEngine.BINA.RFL;
+using System.Numerics;
 
 namespace AshDumpTool;
 
@@ -12,7 +13,9 @@ public class ReflectionWriter
 
     public void Write()
     {
-        WriteParam(rfl.Parameters.First().Key, rfl.Parameters.First().Value);
+        writer.WriteObject("Reflection", () => {
+            WriteParam(rfl.GetStructName(), rfl.Parameters);
+        });
     }
 
     void WriteParam(string name, object value)
@@ -44,6 +47,12 @@ public class ReflectionWriter
                 writer.Write(name, ((ReflectionData.EnumValue)value).Values[(int)((ReflectionData.EnumValue)value).Selected]);
             else if (type == typeof(string))
                 writer.Write(name, (string)value);
+            else if (type == typeof(Vector2))
+                writer.Write(name, (Vector2)value);
+            else if (type == typeof(Vector3))
+                writer.Write(name, (Vector3)value);
+            else if (type == typeof(Vector4))
+                writer.Write(name, (Vector4)value);
             else if (type == typeof(Dictionary<string, object>))
                 writer.WriteObject(name, () =>
                 {
